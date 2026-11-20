@@ -1,0 +1,74 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans:
+    'IBM Plex Sans Thai', 'Noto Sans Thai', 'Leelawadee UI', system-ui, -apple-system,
+    'Segoe UI', Roboto, sans-serif;
+}
+
+:root {
+  color-scheme: dark;
+  font-family: var(--font-sans);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  background: #020617;
+  color: #e2e8f0;
+}
+
+/* The 3D canvas fills the viewport and sits behind every panel. */
+canvas {
+  display: block;
+  touch-action: none;
+}
+
+/* Slim scrollbars for the krathong list and dialogs. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(148 163 184 / 0.35) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: rgb(148 163 184 / 0.35);
+}
+
+/* Respect the OS reduced-motion preference for DOM animations. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Visible focus for keyboard users on the dark UI. */
+:focus-visible {
+  outline: 2px solid rgb(251 146 60 / 0.9);
+  outline-offset: 2px;
+}
+
