@@ -14,10 +14,15 @@ import {
 
 interface VisitorsProps {
   reducedEffects: boolean
+  /** Cheap tier for software renderers: fewer visitors in the crowd. */
+  degraded: boolean
 }
 
 /** Total number of visitors in the scene. */
 const VISITOR_COUNT = 20
+
+/** Number of visitors drawn in the degraded tier. */
+const DEGRADED_VISITOR_COUNT = 6
 
 /** Walking speed in units per second. */
 const WALK_SPEED = 0.55
@@ -44,7 +49,7 @@ interface Visitor {
  * festival outfit. The order is deterministic so the scene never reshuffles
  * between renders.
  */
-function buildVisitors(): Visitor[] {
+function buildVisitors(count: number): Visitor[] {
   const visitors: Visitor[] = []
   const seed = (index: number, salt: number) => {
     // Small deterministic hash so colours stay stable across reloads.
@@ -55,7 +60,7 @@ function buildVisitors(): Visitor[] {
   let index = 0
   for (const route of VISITOR_PATHS) {
     const path = compilePath(route.points)
-    for (let slot = 0; slot < route.capacity && index < VISITOR_COUNT; slot += 1) {
+    for (let slot = 0; slot < route.capacity && index < count; slot += 1) {
       const r1 = seed(index, 1)
       const r2 = seed(index, 2)
       const r3 = seed(index, 3)
@@ -146,8 +151,9 @@ const LANTERN_PART = 8
  * Every body part of every visitor is drawn by one instanced mesh per part,
  * so the whole crowd costs nine draw calls instead of a hundred and eighty.
  */
-export function Visitors({ reducedEffects }: VisitorsProps) {
-  const visitors = useMemo(() => buildVisitors(), [])
+export function Visitors({ reducedEffects, degraded }: VisitorsProps) {
+  const visitorCount = degraded ? DEGRADED_VISITOR_COUNT : VISITOR_COUNT
+  const visitors = useMemo(() => buildVisitors(visitorCount), [visitorCount])
   const parts = useMemo(() => buildParts(), [])
 
   const meshes = useRef<(THREE.InstancedMesh | null)[]>([])
@@ -242,7 +248,7 @@ export function Visitors({ reducedEffects }: VisitorsProps) {
           ref={(mesh) => {
             meshes.current[index] = mesh
           }}
-          args={[part.geometry, undefined, VISITOR_COUNT]}
+          args={[part.geometry, undefined, visitorCount]}
           castShadow={!reducedEffects && index !== LANTERN_PART}
           frustumCulled={false}
         >

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import type { KrathongRow } from '../types/db'
-import { fetchKrathongs, fetchMyVotes } from '../lib/api'
+import { ApiError, fetchKrathongs, fetchMyVotes } from '../lib/api'
 import { getVoterFingerprint } from '../lib/fingerprint'
 import { supabase } from '../lib/supabase'
 
@@ -12,7 +12,10 @@ export interface KrathongFeed {
   /** Ids this browser already voted for. */
   votedIds: Set<string>
   status: FeedStatus
+  /** Error of the main feed load; the scene stays empty while this is set. */
   error: string | null
+  /** Error of the supplementary vote history; the scene still works. */
+  voteError: string | null
   /** True once the Realtime channel is subscribed. */
   isLive: boolean
   /** Replaces the tally of one krathong after a successful vote. */
@@ -23,6 +26,46 @@ export interface KrathongFeed {
   upsertKrathong: (krathong: KrathongRow) => void
   removeKrathong: (krathongId: string) => void
   reload: () => void
+  /** Retries only the vote history, leaving a working feed untouched. */
+  retryVotes: () => void
+}
+
+/** How many times a retryable failure is repeated before giving up. */
+const MAX_RETRIES = 2
+
+/** Base backoff between retries in milliseconds; it doubles per attempt. */
+const RETRY_BASE_DELAY_MS = 600
+
+/** True when the failure is worth another attempt. */
+function isRetryable(cause: unknown): boolean {
+  return cause instanceof ApiError && cause.retryable
+}
+
+/** Waits for the given delay, used as backoff between retries. */
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms)
+  })
+}
+
+/**
+ * Runs an operation and repeats it while the failure looks temporary.
+ *
+ * Only transient failures (timeouts, dropped connections) are repeated;
+ * a rejected permission or a missing row fails immediately.
+ */
+async function withRetry<T>(operation: () => Promise<T>): Promise<T> {
+  let attempt = 0
+
+  for (;;) {
+    try {
+      return await operation()
+    } catch (cause) {
+      if (!isRetryable(cause) || attempt >= MAX_RETRIES) throw cause
+      attempt += 1
+      await delay(RETRY_BASE_DELAY_MS * 2 ** (attempt - 1))
+    }
+  }
 }
 
 /**
@@ -36,8 +79,10 @@ export function useKrathongFeed(): KrathongFeed {
   const [votedIds, setVotedIds] = useState<Set<string>>(new Set())
   const [status, setStatus] = useState<FeedStatus>('loading')
   const [error, setError] = useState<string | null>(null)
+  const [voteError, setVoteError] = useState<string | null>(null)
   const [isLive, setIsLive] = useState(false)
   const [reloadToken, setReloadToken] = useState(0)
+  const [voteReloadToken, setVoteReloadToken] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -46,13 +91,12 @@ export function useKrathongFeed(): KrathongFeed {
       setStatus('loading')
       setError(null)
       try {
-        const [rows, mine] = await Promise.all([
-          fetchKrathongs(),
-          fetchMyVotes(getVoterFingerprint()),
-        ])
+        // The river is the primary content, so publish it as soon as it is
+        // available. Vote history is supplementary and must never keep the
+        // whole scene empty while its RPC is slow or temporarily unavailable.
+        const rows = await withRetry(fetchKrathongs)
         if (cancelled) return
         setKrathongs(rows)
-        setVotedIds(new Set(mine))
         setStatus('ready')
       } catch (cause) {
         if (cancelled) return
@@ -66,6 +110,33 @@ export function useKrathongFeed(): KrathongFeed {
       cancelled = true
     }
   }, [reloadToken])
+
+  // Vote history is loaded separately so a slow or failing RPC never blocks
+  // the scene, and so it can be retried without reloading the whole feed.
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadVotes() {
+      setVoteError(null)
+      try {
+        const mine = await withRetry(() => fetchMyVotes(getVoterFingerprint()))
+        if (cancelled) return
+        setVotedIds(new Set(mine))
+      } catch (cause) {
+        if (cancelled) return
+        setVoteError(
+          cause instanceof Error
+            ? `โหลดประวัติการโหวตไม่สำเร็จ: ${cause.message}`
+            : 'โหลดประวัติการโหวตไม่สำเร็จ',
+        )
+      }
+    }
+
+    void loadVotes()
+    return () => {
+      cancelled = true
+    }
+  }, [voteReloadToken])
 
   useEffect(() => {
     if (!supabase) return
@@ -137,16 +208,20 @@ export function useKrathongFeed(): KrathongFeed {
 
   const reload = useCallback(() => setReloadToken((token) => token + 1), [])
 
+  const retryVotes = useCallback(() => setVoteReloadToken((token) => token + 1), [])
+
   return {
     krathongs,
     votedIds,
     status,
     error,
+    voteError,
     isLive,
     applyVoteCount,
     markVoted,
     upsertKrathong,
     removeKrathong,
     reload,
+    retryVotes,
   }
 }

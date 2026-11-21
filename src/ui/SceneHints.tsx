@@ -1,3 +1,5 @@
+import { PinchIcon, ResetIcon, TapIcon } from './icons'
+
 interface SceneHintsProps {
   /** True when the camera has been moved away from its home framing. */
   canReset: boolean
@@ -12,19 +14,15 @@ interface SceneHintsProps {
  */
 export function SceneHints({ canReset, onResetCamera }: SceneHintsProps) {
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-col items-center gap-2 p-3 sm:p-5">
+    <div className="pointer-events-none flex w-full flex-col items-center gap-2">
       <div className="pointer-events-auto flex max-w-6xl flex-wrap items-center justify-center gap-2 sm:gap-3">
-        <p className="flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/70 px-3 py-1.5 text-xs text-slate-300 shadow-lg backdrop-blur-xl">
-          <span className="text-base leading-none" aria-hidden="true">
-            👆
-          </span>
+        <p className="surface-glass flex items-center gap-2 rounded-full px-3 py-2 text-xs text-mist-300 shadow-lg">
+          <TapIcon className="size-4 shrink-0 text-candle-300" />
           <span>ลากเพื่อหมุนมอง</span>
-          <span className="text-slate-600" aria-hidden="true">
+          <span className="text-mist-500" aria-hidden="true">
             ·
           </span>
-          <span className="text-base leading-none" aria-hidden="true">
-            🤏
-          </span>
+          <PinchIcon className="size-4 shrink-0 text-candle-300" />
           <span>ซูมเข้าออก</span>
         </p>
 
@@ -32,19 +30,10 @@ export function SceneHints({ canReset, onResetCamera }: SceneHintsProps) {
           type="button"
           onClick={onResetCamera}
           disabled={!canReset}
-          className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-slate-950/70 px-3 py-1.5 text-xs text-slate-300 shadow-lg backdrop-blur-xl transition enabled:hover:bg-white/10 enabled:hover:text-white disabled:opacity-40"
+          className="surface-glass control pointer-events-auto min-h-11 rounded-full px-3 py-2 text-xs text-mist-300 shadow-lg enabled:hover:text-mist-50 disabled:opacity-40"
           title="กลับไปยังมุมมองเริ่มต้น"
         >
-          <svg viewBox="0 0 24 24" className="size-3.5" aria-hidden="true">
-            <path
-              d="M4 4v6h6M20 20v-6h-6M20 9A8 8 0 006 5.3M4 15a8 8 0 0014 3.7"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              fill="none"
-            />
-          </svg>
+          <ResetIcon className="size-3.5" />
           <span>มุมมองเริ่มต้น</span>
         </button>
       </div>

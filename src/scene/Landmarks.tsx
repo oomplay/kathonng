@@ -98,7 +98,7 @@ function Temple() {
       {/* Golden finial on the roof ridge. */}
       <mesh position={[-9, 8.2, hallZ]} castShadow>
         <coneGeometry args={[0.7, 1.9, 8]} />
-        <meshStandardMaterial color={PALETTE.gold} roughness={0.35} metalness={0.5} />
+        <meshStandardMaterial color={PALETTE.gold} roughness={0.4} metalness={0.2} />
       </mesh>
     </group>
   )
@@ -177,20 +177,24 @@ function Chedi() {
         <meshStandardMaterial color={PALETTE.templeStone} roughness={0.9} />
       </mesh>
 
-      {/* Bell-shaped body, built from stacked tapering cylinders. */}
+      {/* Bell-shaped body, built from stacked tapering cylinders.
+          The gold is kept mostly dielectric on purpose. A high metalness
+          looks right only when there is an environment map to reflect, and
+          this scene has none, so a metallic surface would swallow the
+          moonlight and the chedi would read as a black cut-out. */}
       <mesh position={[cx, CHEDI_TERRACE.top + 1.5, cz]} castShadow>
         <cylinderGeometry args={[0.95, 1.7, 3, 16]} />
-        <meshStandardMaterial color={PALETTE.gold} roughness={0.38} metalness={0.55} />
+        <meshStandardMaterial color={PALETTE.gold} roughness={0.42} metalness={0.18} />
       </mesh>
       <mesh position={[cx, CHEDI_TERRACE.top + 3.3, cz]} castShadow>
         <cylinderGeometry args={[0.55, 0.95, 0.7, 16]} />
-        <meshStandardMaterial color={PALETTE.goldDeep} roughness={0.4} metalness={0.5} />
+        <meshStandardMaterial color={PALETTE.goldDeep} roughness={0.44} metalness={0.16} />
       </mesh>
 
       {/* Spire. */}
       <mesh position={[cx, CHEDI_TERRACE.top + 4.5, cz]} castShadow>
         <coneGeometry args={[0.42, 1.9, 10]} />
-        <meshStandardMaterial color={PALETTE.gold} roughness={0.35} metalness={0.55} />
+        <meshStandardMaterial color={PALETTE.gold} roughness={0.38} metalness={0.18} />
       </mesh>
 
       {/* Small guardian bells at the four corners. */}

@@ -6,4 +6,12 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   base: '/kathonng/',
+  server: {
+    watch: {
+      // Visual-check artifacts (browser profiles, screenshots) live in the
+      // project directory. Without this the watcher reloads the page whenever
+      // the browser touches its profile cache.
+      ignored: ['**/.visual-check/**'],
+    },
+  },
 })

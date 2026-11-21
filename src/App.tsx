@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Scene } from './scene/Scene'
 import { useKrathongFeed } from './hooks/useKrathongFeed'
 import { useReducedEffects } from './hooks/useReducedEffects'
+import { getInitialQuality, getQualityOverride, type RenderQuality } from './scene/quality'
 import { ApiError, createKrathong, uploadPhoto, voteKrathong } from './lib/api'
 import { getVoterFingerprint } from './lib/fingerprint'
 import { isSupabaseConfigured } from './lib/supabase'
@@ -17,6 +18,8 @@ import type { Toast, ToastTone } from './types/ui'
 function App() {
   const feed = useKrathongFeed()
   const [reducedEffects, setReducedEffects] = useReducedEffects()
+  // Software renderers start in the cheap tier, before the first heavy frame.
+  const [quality, setQuality] = useState<RenderQuality>(() => getInitialQuality())
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [votingId, setVotingId] = useState<string | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
@@ -28,10 +31,15 @@ function App() {
   // Camera framing: the scene publishes a reset function and reports whether
   // the view has drifted away from the home framing.
   const cameraResetRef = useRef<(() => void) | null>(null)
+  const cameraFocusRef = useRef<((id: string) => void) | null>(null)
   const [cameraMoved, setCameraMoved] = useState(false)
 
   const handleCameraResetReady = useCallback((reset: () => void) => {
     cameraResetRef.current = reset
+  }, [])
+
+  const handleCameraFocusReady = useCallback((focus: (id: string) => void) => {
+    cameraFocusRef.current = focus
   }, [])
 
   const handleCameraMoved = useCallback((moved: boolean) => {
@@ -41,6 +49,15 @@ function App() {
   const handleResetCamera = useCallback(() => {
     cameraResetRef.current?.()
   }, [])
+
+  // A sustained low frame rate means the scene is too heavy for this device,
+  // so it drops to the cheaper tier instead of crawling. An explicit
+  // `?quality=` request is a deliberate choice, so it is never overridden.
+  const qualityLocked = getQualityOverride() !== null
+  const handleLowPerformance = useCallback(() => {
+    if (qualityLocked) return
+    setQuality('degraded')
+  }, [qualityLocked])
 
   const pushToast = useCallback((message: string, tone: ToastTone = 'info') => {
     toastIdRef.current += 1
@@ -121,6 +138,10 @@ function App() {
         feed.upsertKrathong(created)
         setCreateOpen(false)
         setSelectedId(created.id)
+        // The scene derives world positions from the feed. Wait for the new
+        // row to be rendered before asking the rig to fly to it; otherwise the
+        // first focus request can arrive before its placement exists.
+        window.setTimeout(() => cameraFocusRef.current?.(created.id), 120)
         pushToast('ส่งกระทงลงแม่น้ำเรียบร้อยแล้ว', 'success')
       } catch (cause) {
         const message =
@@ -162,20 +183,25 @@ function App() {
   }
 
   return (
-    <main className="relative h-svh w-full overflow-hidden bg-slate-950">
+    <main
+      className="relative h-svh w-full overflow-hidden bg-river-950"
+      // Exposes the active rendering tier for diagnostics and visual checks.
+      data-quality={quality}
+    >
       {/* 3D river */}
       <div className="absolute inset-0">
         <Scene
           krathongs={feed.krathongs}
           selectedId={selectedId}
           reducedEffects={reducedEffects}
+          quality={quality}
           onSelect={handleSelect}
           onCameraMoved={handleCameraMoved}
           onCameraResetReady={handleCameraResetReady}
+          onCameraFocusReady={handleCameraFocusReady}
+          onLowPerformance={handleLowPerformance}
         />
       </div>
-
-      <SceneHints canReset={cameraMoved} onResetCamera={handleResetCamera} />
 
       <TopBar
         total={feed.krathongs.length}
@@ -218,29 +244,51 @@ function App() {
 
       <ToastStack toasts={toasts} onDismiss={dismissToast} />
 
-      {/* Feed status */}
-      {feed.status === 'loading' && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-4 z-20 flex justify-center lg:bottom-6">
-          <div className="rounded-full border border-white/10 bg-slate-950/80 px-4 py-2 text-sm text-slate-300 backdrop-blur">
+      {/* Bottom chrome: hints and feed status share one stack so they never
+          overlap each other or the detail card. */}
+        {/* On phones and tablets the detail card occupies the bottom of the
+            screen. Hiding the camera hints while it is open keeps the two
+            pieces of chrome from overlapping; desktop keeps both visible
+            because the detail card is docked to the left. */}
+        <div
+          className={`pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-col items-center gap-2 p-3 sm:p-5 xl:right-[25rem] ${
+            selectedId ? 'hidden lg:flex' : 'flex'
+          }`}
+        >
+        {feed.status === 'loading' && (
+          <div className="surface-glass pointer-events-auto rounded-full px-4 py-2 text-sm text-mist-300">
             กำลังโหลดกระทงจากแม่น้ำ…
           </div>
-        </div>
-      )}
+        )}
 
-      {feed.status === 'error' && feed.error && (
-        <div className="absolute inset-x-0 bottom-4 z-20 flex justify-center px-4 lg:bottom-6">
-          <div className="flex max-w-md items-center gap-3 rounded-2xl border border-rose-400/40 bg-rose-950/70 px-4 py-3 text-sm text-rose-100 backdrop-blur">
+        {feed.status === 'error' && feed.error && (
+          <div className="surface-glass pointer-events-auto flex max-w-md items-center gap-3 rounded-2xl border-ember-400/40 px-4 py-3 text-sm text-ember-300">
             <span className="flex-1">{feed.error}</span>
             <button
               type="button"
               onClick={feed.reload}
-              className="rounded-lg border border-rose-300/40 px-3 py-1.5 text-xs font-semibold transition hover:bg-rose-400/20"
+              className="control control-secondary min-h-11 px-3 py-1.5 text-xs"
             >
               ลองใหม่
             </button>
           </div>
-        </div>
-      )}
+        )}
+
+        {feed.voteError && (
+          <div className="surface-glass pointer-events-auto flex max-w-md items-center gap-3 rounded-2xl border-candle-400/40 px-4 py-2 text-xs text-candle-200">
+            <span className="flex-1">{feed.voteError}</span>
+            <button
+              type="button"
+              onClick={feed.retryVotes}
+              className="control control-secondary min-h-11 px-3 py-1 text-xs"
+            >
+              ลองใหม่
+            </button>
+          </div>
+        )}
+
+        <SceneHints canReset={cameraMoved} onResetCamera={handleResetCamera} />
+      </div>
     </main>
   )
 }

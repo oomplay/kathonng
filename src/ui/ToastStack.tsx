@@ -20,12 +20,12 @@ export function ToastStack({ toasts, onDismiss }: ToastStackProps) {
           key={toast.id}
           type="button"
           onClick={() => onDismiss(toast.id)}
-          className={`pointer-events-auto w-full max-w-sm rounded-2xl border px-4 py-3 text-left text-sm shadow-lg backdrop-blur transition hover:brightness-110 ${
+          className={`surface-glass pointer-events-auto w-full max-w-sm rounded-2xl px-4 py-3 text-left text-sm shadow-lg transition hover:brightness-110 ${
             toast.tone === 'success'
-              ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-100'
+              ? 'border-jade-400/40 bg-jade-400/12 text-jade-300'
               : toast.tone === 'error'
-                ? 'border-rose-400/40 bg-rose-500/15 text-rose-100'
-                : 'border-sky-400/40 bg-sky-500/15 text-sky-100'
+                ? 'border-ember-400/40 bg-ember-500/12 text-ember-300'
+                : 'border-candle-400/40 bg-candle-400/12 text-candle-200'
           }`}
         >
           {toast.message}

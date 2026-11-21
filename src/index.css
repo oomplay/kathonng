@@ -1,9 +1,130 @@
 @import 'tailwindcss';
 
+/* Self-hosted Thai + Latin faces.
+   `IBM Plex Sans Thai` carries body copy, `Charm` carries display headings.
+   Both are OFL-licensed and subset to latin + thai so the payload stays small. */
+@font-face {
+  font-family: 'IBM Plex Sans Thai';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./assets/fonts/ibm-plex-sans-thai-400-thai.woff2') format('woff2');
+  unicode-range: U+0E01-0E5B, U+200C-200D, U+25CC;
+}
+@font-face {
+  font-family: 'IBM Plex Sans Thai';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./assets/fonts/ibm-plex-sans-thai-400-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2122, U+2212;
+}
+@font-face {
+  font-family: 'IBM Plex Sans Thai';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./assets/fonts/ibm-plex-sans-thai-500-thai.woff2') format('woff2');
+  unicode-range: U+0E01-0E5B, U+200C-200D, U+25CC;
+}
+@font-face {
+  font-family: 'IBM Plex Sans Thai';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./assets/fonts/ibm-plex-sans-thai-500-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2122, U+2212;
+}
+@font-face {
+  font-family: 'IBM Plex Sans Thai';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./assets/fonts/ibm-plex-sans-thai-600-thai.woff2') format('woff2');
+  unicode-range: U+0E01-0E5B, U+200C-200D, U+25CC;
+}
+@font-face {
+  font-family: 'IBM Plex Sans Thai';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./assets/fonts/ibm-plex-sans-thai-600-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2122, U+2212;
+}
+@font-face {
+  font-family: 'Charm';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./assets/fonts/charm-400-thai.woff2') format('woff2');
+  unicode-range: U+0E01-0E5B, U+200C-200D, U+25CC;
+}
+@font-face {
+  font-family: 'Charm';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./assets/fonts/charm-400-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2122, U+2212;
+}
+@font-face {
+  font-family: 'Charm';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./assets/fonts/charm-700-thai.woff2') format('woff2');
+  unicode-range: U+0E01-0E5B, U+200C-200D, U+25CC;
+}
+@font-face {
+  font-family: 'Charm';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./assets/fonts/charm-700-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2122, U+2212;
+}
+
 @theme {
   --font-sans:
-    'IBM Plex Sans Thai', 'Noto Sans Thai', 'Leelawadee UI', system-ui, -apple-system,
-    'Segoe UI', Roboto, sans-serif;
+    'IBM Plex Sans Thai', 'Leelawadee UI', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Charm', 'IBM Plex Sans Thai', 'Leelawadee UI', system-ui, sans-serif;
+
+  /* Night-festival palette: deep river indigo, candle gold, lotus magenta. */
+  --color-river-950: #04070f;
+  --color-river-900: #070d1f;
+  --color-river-800: #0b1430;
+  --color-river-700: #122048;
+  --color-river-600: #1b2e63;
+  --color-river-500: #27407f;
+
+  --color-candle-50: #fff8ec;
+  --color-candle-100: #ffeccd;
+  --color-candle-200: #ffdd9e;
+  --color-candle-300: #ffcb6b;
+  --color-candle-400: #ffb43f;
+  --color-candle-500: #f59a1f;
+
+  --color-lotus-300: #ffb3d6;
+  --color-lotus-400: #f45fa3;
+  --color-lotus-500: #d43d80;
+
+  --color-jade-300: #7fd18a;
+  --color-jade-400: #4bbd68;
+
+  /* Neutral text scale, tuned against the darkest river surface. */
+  --color-mist-50: #eef2fb;
+  --color-mist-300: #b9c4de;
+  --color-mist-500: #8e9cbd;
+
+  /* Errors and destructive states. */
+  --color-ember-300: #ff9d9e;
+  --color-ember-400: #f26d6d;
+  --color-ember-500: #c94545;
+
+  /* Hairlines are translucent candle light; they read as a warm edge on the
+     dark river rather than a hard grey line. */
+  --color-hairline: color-mix(in srgb, var(--color-candle-200) 16%, transparent);
+  --color-hairline-strong: color-mix(in srgb, var(--color-candle-200) 32%, transparent);
 }
 
 :root {
@@ -13,6 +134,13 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* The one place the panel surface is defined. Every translucent panel in
+     the app composes over this so the HUD reads as one material. */
+  --surface-panel: color-mix(in srgb, var(--color-river-800) 78%, transparent);
+  --surface-panel-strong: color-mix(in srgb, var(--color-river-900) 94%, transparent);
+  --text-muted: var(--color-mist-300);
+  --text-faint: var(--color-mist-500);
 }
 
 html,
@@ -24,8 +152,29 @@ body,
 body {
   margin: 0;
   overflow: hidden;
-  background: #020617;
-  color: #e2e8f0;
+  background: var(--color-river-950);
+  color: var(--color-mist-50);
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    line-height: 1.25;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
 }
 
 /* The 3D canvas fills the viewport and sits behind every panel. */
@@ -68,7 +217,161 @@ canvas {
 
 /* Visible focus for keyboard users on the dark UI. */
 :focus-visible {
-  outline: 2px solid rgb(251 146 60 / 0.9);
+  outline: 2px solid var(--color-candle-300);
   outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------ *
+ * Shared surface and control recipes
+ *
+ * The HUD is one material: every panel uses `.surface-*`, every button
+ * uses `.control-*`, and every input uses `.field`. Components then only
+ * add layout utilities, so spacing and radii never drift between panels.
+ * ------------------------------------------------------------------ */
+@layer components {
+  .surface-glass {
+    background-color: var(--surface-panel);
+    border: 1px solid var(--hairline);
+    backdrop-filter: blur(20px) saturate(130%);
+  }
+
+  .surface-glass-strong {
+    background-color: var(--surface-panel-strong);
+    border: 1px solid var(--hairline-strong);
+    backdrop-filter: blur(24px) saturate(130%);
+  }
+
+  .surface-sunken {
+    background-color: color-mix(in srgb, var(--color-river-950) 55%, transparent);
+    border: 1px solid var(--hairline);
+  }
+
+  .krathong-list-panel {
+    transform: translateY(100%);
+  }
+
+  .krathong-list-panel[data-open='true'] {
+    transform: translateY(0);
+  }
+
+  @media (min-width: 80rem) {
+    .krathong-list-panel,
+    .krathong-list-panel[data-open='true'] {
+      transform: none;
+    }
+  }
+
+  .control {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    padding: 0.5rem 1rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.25;
+    transition:
+      background-color 150ms ease,
+      border-color 150ms ease,
+      color 150ms ease,
+      box-shadow 150ms ease,
+      transform 150ms ease;
+  }
+
+  .control:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  .control:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  .control-primary {
+    background-image: linear-gradient(
+      135deg,
+      var(--color-candle-300),
+      var(--color-candle-400)
+    );
+    color: var(--color-river-950);
+    box-shadow: 0 12px 30px -14px color-mix(in srgb, var(--color-candle-500) 80%, transparent);
+  }
+
+  .control-primary:hover:not(:disabled) {
+    filter: brightness(1.06);
+  }
+
+  .control-secondary {
+    background-color: color-mix(in srgb, var(--color-candle-200) 10%, transparent);
+    border: 1px solid var(--hairline);
+    color: var(--color-candle-100);
+  }
+
+  .control-secondary:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--color-candle-200) 18%, transparent);
+  }
+
+  .control-ghost {
+    color: var(--color-mist-300);
+  }
+
+  .control-ghost:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--color-candle-200) 10%, transparent);
+    color: var(--color-mist-50);
+  }
+
+  .icon-button {
+    display: inline-grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 9999px;
+    border: 1px solid var(--hairline);
+    color: var(--color-mist-300);
+    transition:
+      background-color 150ms ease,
+      color 150ms ease,
+      border-color 150ms ease;
+  }
+
+  .icon-button:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--color-candle-200) 12%, transparent);
+    color: var(--color-mist-50);
+  }
+
+  .field {
+    width: 100%;
+    /* Every field is a touch target, so it never renders below 44px. */
+    min-height: 2.75rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--hairline);
+    background-color: color-mix(in srgb, var(--color-river-950) 45%, transparent);
+    padding: 0.625rem 0.75rem;
+    font-size: 0.875rem;
+    color: var(--color-mist-50);
+  }
+
+  .field::placeholder {
+    color: var(--color-mist-500);
+  }
+
+  .field:focus-visible {
+    border-color: color-mix(in srgb, var(--color-candle-300) 70%, transparent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-candle-300) 22%, transparent);
+    outline: none;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border-radius: 9999px;
+    padding: 0.125rem 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    line-height: 1.4;
+  }
 }
 

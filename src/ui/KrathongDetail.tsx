@@ -1,6 +1,7 @@
 import type { KrathongRow } from '../types/db'
 import { getStyle } from '../lib/styles'
 import { formatThaiDate, formatThaiRelativeTime } from '../lib/time'
+import { CheckIcon, CloseIcon, HeartIcon, KrathongIcon } from './icons'
 
 interface KrathongDetailProps {
   krathong: KrathongRow | null
@@ -23,42 +24,42 @@ export function KrathongDetail({
   const style = getStyle(krathong.style_id)
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-center p-3 sm:bottom-4 sm:justify-start sm:p-5 lg:bottom-auto lg:left-4 lg:top-24 lg:justify-start">
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-center p-3 sm:bottom-4 sm:justify-start sm:p-5 lg:bottom-auto lg:left-4 lg:top-28 lg:justify-start">
       <article
-        className="pointer-events-auto w-full max-w-sm overflow-hidden rounded-3xl border border-white/10 bg-slate-950/85 shadow-2xl backdrop-blur-xl"
+        className="surface-glass pointer-events-auto w-full max-w-sm overflow-hidden rounded-3xl shadow-2xl"
         aria-live="polite"
       >
-        {krathong.photo_url && (
-          <img
-            src={krathong.photo_url}
-            alt={`ภาพประกอบกระทงของ ${krathong.owner_name}`}
-            className="h-40 w-full object-cover"
-            loading="lazy"
-          />
-        )}
 
         <div className="p-4">
           <div className="flex items-start gap-3">
-            <span
-              aria-hidden="true"
-              className="size-11 shrink-0 rounded-2xl shadow-inner"
-              style={{
-                background: `linear-gradient(140deg, ${krathong.color_hex}, ${style.trimColor})`,
-              }}
-            />
+            {krathong.photo_url ? (
+              <img
+                src={krathong.photo_url}
+                alt={`รูปของ ${krathong.owner_name}`}
+                className="size-12 shrink-0 rounded-2xl border border-hairline bg-river-900 object-cover shadow-lg"
+                loading="lazy"
+              />
+            ) : (
+              <span
+                aria-hidden="true"
+                className="grid size-12 shrink-0 place-items-center rounded-2xl border border-hairline bg-gradient-to-br from-river-700 to-river-950 text-candle-300 shadow-inner"
+              >
+                <KrathongIcon className="size-6" />
+              </span>
+            )}
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-1.5">
-                <h2 className="truncate text-base font-semibold text-white">
+                <h2 className="truncate text-base font-semibold text-mist-50">
                   {krathong.owner_name}
                 </h2>
                 <span
-                  className="rounded-full px-2 py-0.5 text-[11px] font-medium"
+                  className="chip"
                   style={{ backgroundColor: `${style.accent}22`, color: style.accent }}
                 >
                   {style.label}
                 </span>
               </div>
-              <p className="mt-0.5 text-xs text-slate-500">
+              <p className="mt-0.5 text-xs text-mist-500">
                 {formatThaiRelativeTime(krathong.created_at)} · {formatThaiDate(krathong.created_at)}
               </p>
             </div>
@@ -66,15 +67,13 @@ export function KrathongDetail({
               type="button"
               onClick={onClose}
               aria-label="ปิดรายละเอียด"
-              className="rounded-full border border-white/10 p-1.5 text-slate-400 transition hover:bg-white/10 hover:text-white"
+              className="icon-button shrink-0"
             >
-              <svg viewBox="0 0 24 24" className="size-3.5" aria-hidden="true">
-                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
+              <CloseIcon className="size-4" />
             </button>
           </div>
 
-          <blockquote className="mt-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-sm leading-relaxed text-slate-100">
+          <blockquote className="surface-sunken mt-3 rounded-2xl p-3 text-sm leading-relaxed text-mist-50">
             “{krathong.wish_text}”
           </blockquote>
 
@@ -83,23 +82,32 @@ export function KrathongDetail({
               type="button"
               onClick={() => onVote(krathong.id)}
               disabled={voted || voting}
-              className={`inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition active:scale-[0.98] disabled:cursor-default ${
+              aria-pressed={voted}
+              className={`control flex-1 ${
                 voted
-                  ? 'border border-emerald-400/40 bg-emerald-400/15 text-emerald-300'
-                  : 'bg-gradient-to-r from-rose-500 to-orange-500 text-white shadow-lg shadow-rose-500/25 hover:brightness-110'
+                  ? 'border border-jade-400/40 bg-jade-400/15 text-jade-300'
+                  : 'control-primary'
               }`}
             >
               {voting ? (
                 <span className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
               ) : voted ? (
-                '✓ คุณโหวตแล้ว'
+                <>
+                  <CheckIcon className="size-4" />
+                  คุณโหวตแล้ว
+                </>
               ) : (
-                <>♥ โหวตกระทงนี้</>
+                <>
+                  <HeartIcon className="size-4" />
+                  โหวตกระทงนี้
+                </>
               )}
             </button>
-            <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-center">
-              <div className="text-base font-semibold text-white">{krathong.vote_count}</div>
-              <div className="text-[10px] text-slate-400">คะแนน</div>
+            <div className="surface-sunken rounded-xl px-3 py-2 text-center">
+              <div className="text-base font-semibold text-mist-50">
+                {krathong.vote_count.toLocaleString('th-TH')}
+              </div>
+              <div className="text-[10px] text-mist-300">คะแนน</div>
             </div>
           </div>
         </div>

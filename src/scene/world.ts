@@ -78,24 +78,30 @@ export const PIER: Slab = {
   top: 0.95,
 }
 
-/** Night palette shared by the landmarks. */
+/**
+ * Night palette shared by the landmarks.
+ *
+ * These mirror the CSS custom properties in `src/index.css`, so the 3D scene
+ * and the HUD are lit from the same palette. The values are duplicated here
+ * because three.js materials need concrete colours, not CSS variables.
+ */
 export const PALETTE = {
-  bank: '#1d2436',
-  paving: '#39415a',
-  terrace: '#2b3245',
-  templeStone: '#3b4257',
+  bank: '#0b1430',
+  paving: '#1b2e63',
+  terrace: '#122048',
+  templeStone: '#27407f',
   wood: '#5a3a26',
   woodDark: '#3a2519',
   woodLight: '#7a5136',
   roof: '#9c3427',
   roofDark: '#6f241b',
   hall: '#6b4327',
-  gold: '#e7b755',
-  goldDeep: '#a97a24',
-  window: '#ffb45c',
-  lantern: '#ffd79a',
-  lanternGlow: '#ff9a3c',
-  skyLantern: '#ffbe72',
+  gold: '#ffcb6b',
+  goldDeep: '#f59a1f',
+  window: '#ffdd9e',
+  lantern: '#ffeccd',
+  lanternGlow: '#ffb43f',
+  skyLantern: '#ffdd9e',
 } as const
 
 /* ------------------------------------------------------------------ *

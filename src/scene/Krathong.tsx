@@ -2,29 +2,35 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { KrathongRow } from '../types/db'
-import { getKrathongPlacement } from '../lib/layout'
+import type { Placement } from '../lib/layout'
 import { getStyle } from '../lib/styles'
 import { shade, withAlpha } from '../lib/color'
 
 interface KrathongProps {
   krathong: KrathongRow
-  index: number
+  /** The slot this float occupies on the river. */
+  placement: Placement
   selected: boolean
   reducedEffects: boolean
+  /** Cheap tier for software renderers: no per-float light or halo. */
+  degraded: boolean
   onSelect: (id: string) => void
 }
 
 /** A single floating krathong with its candle, glow and gentle bobbing. */
-export function Krathong({ krathong, index, selected, reducedEffects, onSelect }: KrathongProps) {
+export function Krathong({
+  krathong,
+  placement,
+  selected,
+  reducedEffects,
+  degraded,
+  onSelect,
+}: KrathongProps) {
   const groupRef = useRef<THREE.Group>(null)
   const flameRef = useRef<THREE.PointLight>(null)
   const haloRef = useRef<THREE.Mesh>(null)
 
   const style = getStyle(krathong.style_id)
-  const placement = useMemo(
-    () => getKrathongPlacement(index, krathong.id),
-    [index, krathong.id],
-  )
 
   // The chosen colour tints the float while the style keeps its identity.
   const bodyColor = useMemo(() => shade(krathong.color_hex, -0.08), [krathong.color_hex])
@@ -48,7 +54,7 @@ export function Krathong({ krathong, index, selected, reducedEffects, onSelect }
 
     if (flameRef.current && !reducedEffects) {
       const flicker = 1 + Math.sin(time * 9 + placement.phase) * 0.12
-      flameRef.current.intensity = 1.6 * flicker
+      flameRef.current.intensity = 1.15 * flicker
     }
 
     if (haloRef.current && !reducedEffects) {
@@ -76,14 +82,36 @@ export function Krathong({ krathong, index, selected, reducedEffects, onSelect }
         document.body.style.cursor = 'auto'
       }}
     >
+      {/* Invisible tap target.
+          The visible float is only ~1.2 units wide, which is a small target on
+          a phone. This fully transparent sphere is still raycast by three.js
+          but draws nothing, so the whole halo around the float is tappable. */}
+      <mesh
+        position={[0, 0.3, 0]}
+        onClick={(event) => {
+          event.stopPropagation()
+          onSelect(krathong.id)
+        }}
+      >
+        <sphereGeometry args={[0.95, 12, 10]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+
       {/* Hull */}
       <mesh castShadow receiveShadow>
         <cylinderGeometry args={[0.62, 0.42, 0.34, 24]} />
         <meshStandardMaterial color={bodyColor} roughness={0.72} metalness={0.08} />
       </mesh>
 
-      {/* Upper rim */}
-      <mesh position={[0, 0.18, 0]} castShadow>
+      {/* Upper rim.
+          A torus is built in the XY plane, so without this rotation it stands
+          upright like a basket handle. Laying it flat makes it read as the
+          rim of the float. */}
+      <mesh
+        position={[0, 0.18, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        castShadow
+      >
         <torusGeometry args={[0.6, 0.055, 10, 28]} />
         <meshStandardMaterial color={petalColor} roughness={0.5} metalness={0.16} />
       </mesh>
@@ -169,39 +197,59 @@ export function Krathong({ krathong, index, selected, reducedEffects, onSelect }
         <meshBasicMaterial color={style.glowColor} toneMapped={false} />
       </mesh>
 
-      <pointLight
-        ref={flameRef}
-        position={[0, 0.6, 0]}
-        color={style.glowColor}
-        intensity={reducedEffects ? 1.4 : 1.6}
-        distance={4.5}
-        decay={2}
-      />
-
-      {/* Soft halo on the water */}
-      <mesh ref={haloRef} position={[0, -0.16, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[0.85, 32]} />
-        <meshBasicMaterial
+      {!degraded && (
+        <pointLight
+          ref={flameRef}
+          position={[0, 0.6, 0]}
           color={style.glowColor}
-          transparent
-          opacity={selected ? 0.3 : 0.16}
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
+          intensity={reducedEffects ? 1.0 : 1.15}
+          distance={3.6}
+          decay={2}
         />
-      </mesh>
+      )}
 
-      {/* Selection ring */}
-      {selected && (
-        <mesh position={[0, -0.14, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[0.92, 1.06, 48]} />
+      {/* Soft halo on the water.
+          Kept deliberately faint. The reflective river already catches the
+          candle, so a stronger additive disc stacks on top of that reflection
+          and blows the near floats out to white. */}
+      {!degraded && (
+        <mesh ref={haloRef} position={[0, -0.16, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <circleGeometry args={[0.85, 32]} />
           <meshBasicMaterial
-            color={withAlpha(style.glowColor, 0.85)}
+            color={style.glowColor}
             transparent
-            opacity={0.9}
+            opacity={selected ? 0.22 : 0.1}
             depthWrite={false}
-            toneMapped={false}
+            blending={THREE.AdditiveBlending}
           />
         </mesh>
+      )}
+
+      {/* Selection ring: a bright outer ring plus a soft inner glow, so the
+          selected float is obvious even against the candle light. */}
+      {selected && (
+        <>
+          <mesh position={[0, -0.13, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[0.92, 1.06, 48]} />
+            <meshBasicMaterial
+              color={withAlpha(style.glowColor, 0.95)}
+              transparent
+              opacity={0.95}
+              depthWrite={false}
+              toneMapped={false}
+            />
+          </mesh>
+          <mesh position={[0, -0.12, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[1.12, 1.3, 48]} />
+            <meshBasicMaterial
+              color={withAlpha(style.glowColor, 0.5)}
+              transparent
+              opacity={0.5}
+              depthWrite={false}
+              toneMapped={false}
+            />
+          </mesh>
+        </>
       )}
     </group>
   )

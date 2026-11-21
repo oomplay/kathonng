@@ -5,8 +5,18 @@ interface MoonProps {
   reducedEffects: boolean
 }
 
-/** Position of the moon in the sky, above the far bank. */
-const MOON_POSITION: [number, number, number] = [-17, 15, -38]
+/**
+ * Position of the moon in the sky, above the far bank.
+ *
+ * The framing solver placed it here: the moon has to sit inside the sky band
+ * that the landscape and portrait rigs leave above the horizon, and it must
+ * clear the temple silhouette on its left.
+ */
+const MOON_POSITION: [number, number, number] = [0, 10, -34]
+/** Radius of the moon disc. */
+const MOON_RADIUS = 3.2
+/** Scale of the soft halo around the moon. */
+const MOON_HALO_SCALE = 18
 
 /** Paints a soft radial falloff used by the moon halo and the reflection. */
 function createGlowCanvas(): HTMLCanvasElement {
@@ -48,10 +58,10 @@ export function Moon({ reducedEffects }: MoonProps) {
     <group>
       <group position={MOON_POSITION}>
         <mesh>
-          <sphereGeometry args={[3.1, 32, 24]} />
+          <sphereGeometry args={[MOON_RADIUS, 32, 24]} />
           <meshBasicMaterial color="#fff6df" toneMapped={false} fog={false} />
         </mesh>
-        <sprite scale={[16, 16, 1]}>
+        <sprite scale={[MOON_HALO_SCALE, MOON_HALO_SCALE, 1]}>
           <spriteMaterial
             map={glow}
             color="#ffe9bd"
@@ -65,13 +75,15 @@ export function Moon({ reducedEffects }: MoonProps) {
         </sprite>
       </group>
 
-      {/* Reflection: a soft vertical streak lying flat on the water. */}
+      {/* Reflection: a soft vertical streak lying flat on the water.
+          It has to stay on the open water, so it reaches no further back
+          than the far bank edge at z = -11. */}
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
-        position={[MOON_POSITION[0] * 0.25, 0.03, -12]}
+        position={[MOON_POSITION[0] * 0.25, 0.03, -6]}
         renderOrder={2}
       >
-        <planeGeometry args={[7, 26]} />
+        <planeGeometry args={[7, 18]} />
         <meshBasicMaterial
           map={glow}
           color="#ffe6b8"

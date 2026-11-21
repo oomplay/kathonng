@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useId, useRef } from 'react'
 import type { ReactNode } from 'react'
+import { CloseIcon } from './icons'
 
 interface ModalProps {
   open: boolean
@@ -11,7 +12,14 @@ interface ModalProps {
   wide?: boolean
 }
 
-/** Accessible dialog with backdrop, escape handling and scroll locking. */
+/**
+ * Accessible dialog built on the native `<dialog>` element.
+ *
+ * `showModal()` gives us the focus trap, the inert background and the Escape
+ * key for free, and it keeps the dialog in the top layer so it is never
+ * clipped by the 3D canvas. Focus returns to the trigger when the dialog
+ * closes because the browser restores it when the dialog is closed.
+ */
 export function Modal({
   open,
   title,
@@ -21,72 +29,59 @@ export function Modal({
   footer,
   wide = false,
 }: ModalProps) {
-  const panelRef = useRef<HTMLDivElement>(null)
+  const dialogRef = useRef<HTMLDialogElement>(null)
+  const titleId = useId()
 
   useEffect(() => {
-    if (!open) return
+    const dialog = dialogRef.current
+    if (!dialog) return
 
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
+    if (open && !dialog.open) {
+      dialog.showModal()
+    } else if (!open && dialog.open) {
+      dialog.close()
     }
-
-    document.addEventListener('keydown', handleKeyDown)
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    panelRef.current?.focus()
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown)
-      document.body.style.overflow = previousOverflow
-    }
-  }, [open, onClose])
-
-  if (!open) return null
+  }, [open])
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
-      <button
-        type="button"
-        aria-label="ปิดหน้าต่าง"
-        className="absolute inset-0 cursor-default bg-slate-950/70 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      <div
-        ref={panelRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        tabIndex={-1}
-        className={`relative max-h-[92svh] w-full overflow-y-auto rounded-t-3xl border border-white/10 bg-slate-900/95 p-5 shadow-2xl outline-none sm:rounded-3xl ${
-          wide ? 'sm:max-w-2xl' : 'sm:max-w-lg'
-        }`}
-      >
-        <div className="mb-4 flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-semibold text-white">{title}</h2>
-            {description && <p className="mt-1 text-sm text-slate-400">{description}</p>}
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="ปิด"
-            className="rounded-full border border-white/10 p-2 text-slate-400 transition hover:bg-white/10 hover:text-white"
-          >
-            <svg viewBox="0 0 24 24" className="size-4" aria-hidden="true">
-              <path
-                d="M6 6l12 12M18 6L6 18"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
+    <dialog
+      ref={dialogRef}
+      aria-labelledby={titleId}
+      onCancel={(event) => {
+        // Prevent the browser's default close so `onClose` stays the single
+        // source of truth for the parent state.
+        event.preventDefault()
+        onClose()
+      }}
+      onClose={onClose}
+      className={`surface-glass-strong m-0 max-h-[92svh] w-full overflow-y-auto rounded-t-3xl p-0 text-mist-50 shadow-2xl backdrop:bg-river-950/70 backdrop:backdrop-blur-sm open:flex open:flex-col sm:mx-auto sm:max-h-[88svh] sm:rounded-3xl ${
+        wide ? 'sm:max-w-2xl' : 'sm:max-w-lg'
+      }`}
+    >
+      <div className="flex items-start justify-between gap-4 border-b border-hairline px-5 py-4">
+        <div>
+          <h2 id={titleId} className="text-xl font-semibold text-mist-50">
+            {title}
+          </h2>
+          {description && <p className="mt-1 text-sm text-mist-300">{description}</p>}
         </div>
-
-        {children}
-
-        {footer && <div className="mt-5 flex flex-wrap justify-end gap-2">{footer}</div>}
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="ปิดหน้าต่าง"
+          className="icon-button shrink-0"
+        >
+          <CloseIcon className="size-4" />
+        </button>
       </div>
-    </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
+
+      {footer && (
+        <div className="flex flex-wrap justify-end gap-2 border-t border-hairline px-5 py-4">
+          {footer}
+        </div>
+      )}
+    </dialog>
   )
 }
