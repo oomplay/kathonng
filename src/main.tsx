@@ -5,9 +5,13 @@ import { createRoot } from 'react-dom/client'
 // library into the initial bundle.
 import './index.css'
 import App from './App.tsx'
+import { ErrorBoundary } from './components/ErrorBoundary'
+import { AppFallback } from './ui/AppFallback'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary fallback={<AppFallback />}>
+      <App />
+    </ErrorBoundary>
   </StrictMode>,
 )

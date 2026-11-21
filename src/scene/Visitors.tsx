@@ -19,6 +19,11 @@ import {
   VISITOR_PATHS,
 } from './world'
 import { GLTFModelWithFallback } from '../components/GLTFModel'
+import {
+  DEGRADED_VISITOR_COUNT,
+  FOCAL_GLTF_VISITOR_POSITIONS,
+  PROCEDURAL_VISITOR_COUNT,
+} from './visitorConfig'
 
 interface VisitorsProps {
   reducedEffects: boolean
@@ -26,11 +31,10 @@ interface VisitorsProps {
   degraded: boolean
 }
 
-/** Total number of visitors in the scene. */
-const VISITOR_COUNT = 20
-
-/** Number of visitors drawn in the degraded tier. */
-const DEGRADED_VISITOR_COUNT = 6
+/**
+ * Procedural visitors in the full quality tier. Four focal GLB visitors are
+ * added separately, making twenty visitors in total.
+ */
 
 /** Walking speed in units per second. */
 const WALK_SPEED = 0.55
@@ -160,7 +164,7 @@ const LANTERN_PART = 8
  * so the whole crowd costs nine draw calls instead of a hundred and eighty.
  */
 export function Visitors({ reducedEffects, degraded }: VisitorsProps) {
-  const visitorCount = degraded ? DEGRADED_VISITOR_COUNT : VISITOR_COUNT
+  const visitorCount = degraded ? DEGRADED_VISITOR_COUNT : PROCEDURAL_VISITOR_COUNT
   const visitors = useMemo(() => buildVisitors(visitorCount), [visitorCount])
   const parts = useMemo(() => buildParts(), [])
 
@@ -277,43 +281,20 @@ export function Visitors({ reducedEffects, degraded }: VisitorsProps) {
         </instancedMesh>
       ))}
 
-      {/* Focal GLTF visitors - placed at key locations along paths */}
-      {!degraded && (
-        <>
-          {/* Visitor near the pier watching krathongs */}
-          <GLTFModelWithFallback
-            asset="visitor"
-            position={[4.5, 0, -8.2]}
-            rotation={[0, -Math.PI / 2, 0]}
-            animation="idle"
-            playAnimation={true}
-          />
-          {/* Visitor on the left promenade */}
-          <GLTFModelWithFallback
-            asset="visitor"
-            position={[-8.5, 0, 3]}
-            rotation={[0, Math.PI / 4, 0]}
-            animation="wave"
-            playAnimation={true}
-          />
-          {/* Visitor on the right promenade */}
-          <GLTFModelWithFallback
-            asset="visitor"
-            position={[8.5, 0, -3]}
-            rotation={[0, -Math.PI / 4, 0]}
-            animation="cheer"
-            playAnimation={true}
-          />
-          {/* Visitor near the temple */}
-          <GLTFModelWithFallback
-            asset="visitor"
-            position={[-9, 0, -18]}
-            rotation={[0, 0, 0]}
-            animation="idle"
-            playAnimation={true}
-          />
-        </>
-      )}
+      {/* Four focal GLTF visitors - placed at key locations along paths. */}
+      {!degraded &&
+        FOCAL_GLTF_VISITOR_POSITIONS.map(
+          ({ position, rotation, animation }, index) => (
+            <GLTFModelWithFallback
+              key={`focal-visitor-${index}`}
+              asset="visitor"
+              position={position}
+              rotation={rotation}
+              animation={animation}
+              playAnimation={true}
+            />
+          ),
+        )}
     </group>
   )
 }

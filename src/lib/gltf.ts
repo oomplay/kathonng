@@ -1,4 +1,6 @@
 import { Box3, Object3D } from 'three'
+import { clone as cloneWithSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
+import { modelAssetUrl } from './assets'
 
 /** Bounding box of a model in its local coordinate system. */
 export interface ModelBounds {
@@ -18,6 +20,32 @@ export interface FitConstraints {
   maxDepth?: number
   /** Extra multiplier applied after the fit is calculated. */
   scaleMultiplier?: number
+}
+
+/**
+ * Clones a loaded GLTF scene so every instance owns its own objects.
+ *
+ * `useLoader` caches one parsed GLTF per URL, so every model that points at
+ * the same file would otherwise receive the very same `Object3D`. Mounting
+ * one object in several places in the scene graph is undefined behaviour in
+ * three.js: the last mount wins the world transform, so four visitors end up
+ * stacked on top of each other. Cloning gives each instance an independent
+ * hierarchy.
+ *
+ * Rigged models need `SkeletonUtils.clone`, because a plain `Object3D.clone`
+ * copies the mesh but leaves it bound to the original armature. The visitor
+ * model is skinned, so its bones and the mesh binding have to be cloned
+ * together.
+ *
+ * @param source - The scene root of the cached GLTF.
+ * @returns An independent copy that is safe to mount and animate.
+ */
+export function cloneScene(source: Object3D): Object3D {
+  let isSkinned = false
+  source.traverse((child) => {
+    if ((child as { isSkinnedMesh?: boolean }).isSkinnedMesh) isSkinned = true
+  })
+  return isSkinned ? cloneWithSkeleton(source) : source.clone()
 }
 
 /** Size of the model after fitting. */
@@ -115,7 +143,9 @@ export type AnimationClipName =
 
 /** Registry entry for a single GLTF/GLB asset. */
 export interface AssetRegistryEntry {
-  /** Public URL path under /models/ */
+  /** File name of the GLB inside `public/models/`. */
+  fileName: string
+  /** Base-aware public URL used to load the asset. */
   url: string
   /** Local bounds measured from the source file (before any fitting). */
   bounds: ModelBounds
@@ -144,42 +174,48 @@ export type AssetKey =
 /** Complete asset registry with typed keys. */
 export const ASSET_REGISTRY: Readonly<Record<AssetKey, AssetRegistryEntry>> = {
   'festival-lantern': {
-    url: '/models/festival-lantern.glb',
+    fileName: 'festival-lantern.glb',
+    url: modelAssetUrl('festival-lantern.glb'),
     bounds: { min: [-0.32, 0, -0.32], max: [0.32, 0.925, 0.32] },
     fit: { targetHeight: 1.2, scaleMultiplier: 1 },
     castShadow: true,
     receiveShadow: true,
   },
   lotus: {
-    url: '/models/lotus.glb',
+    fileName: 'lotus.glb',
+    url: modelAssetUrl('lotus.glb'),
     bounds: { min: [-0.337, -0.798, -0.316], max: [0.322, 0.293, 0.341] },
     fit: { targetHeight: 0.5, scaleMultiplier: 1 },
     castShadow: true,
     receiveShadow: true,
   },
   pagoda: {
-    url: '/models/pagoda.glb',
+    fileName: 'pagoda.glb',
+    url: modelAssetUrl('pagoda.glb'),
     bounds: { min: [-24516.035, -215.064, 1468.869], max: [-15974.184, 10691.325, 10074.298] },
     fit: { targetHeight: 18, maxWidth: 14, maxDepth: 14, scaleMultiplier: 1 },
     castShadow: true,
     receiveShadow: true,
   },
   'riverside-tree': {
-    url: '/models/riverside-tree.glb',
+    fileName: 'riverside-tree.glb',
+    url: modelAssetUrl('riverside-tree.glb'),
     bounds: { min: [-2.194, -0.243, -2.225], max: [2.117, 7.022, 2.353] },
     fit: { targetHeight: 6, maxWidth: 4, maxDepth: 4, scaleMultiplier: 1 },
     castShadow: true,
     receiveShadow: true,
   },
   'thai-house': {
-    url: '/models/thai-house.glb',
+    fileName: 'thai-house.glb',
+    url: modelAssetUrl('thai-house.glb'),
     bounds: { min: [-0.435, -0.766, -0.587], max: [1.029, 0.002, 0.587] },
     fit: { targetHeight: 3.5, maxWidth: 5, maxDepth: 4, scaleMultiplier: 1 },
     castShadow: true,
     receiveShadow: true,
   },
   visitor: {
-    url: '/models/visitor.glb',
+    fileName: 'visitor.glb',
+    url: modelAssetUrl('visitor.glb'),
     bounds: { min: [-0.525, 0, -0.491], max: [0.525, 2.157, 0.491] },
     fit: { targetHeight: 1.8, scaleMultiplier: 1 },
     animations: ['idle', 'walk', 'run', 'jump', 'fall', 'wave', 'punch', 'death', 'cheer', 'dance'] as const,
@@ -188,7 +224,8 @@ export const ASSET_REGISTRY: Readonly<Record<AssetKey, AssetRegistryEntry>> = {
     receiveShadow: true,
   },
   'wat-temple': {
-    url: '/models/wat-temple.glb',
+    fileName: 'wat-temple.glb',
+    url: modelAssetUrl('wat-temple.glb'),
     bounds: { min: [-1.096, -4.327, -1.096], max: [1.096, 0.002, 1.096] },
     fit: { targetHeight: 6, maxWidth: 5, maxDepth: 5, scaleMultiplier: 1 },
     castShadow: true,

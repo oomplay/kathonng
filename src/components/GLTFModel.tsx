@@ -1,9 +1,18 @@
-import { useLoader } from '@react-three/fiber'
+import { useFrame, useLoader } from '@react-three/fiber'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
-import { Suspense, useEffect, useRef } from 'react'
-import { AnimationClip, AnimationMixer, Clock, LoopOnce, Mesh, Vector3 } from 'three'
+import { Suspense, useEffect, useMemo, useRef } from 'react'
+import {
+  AnimationClip,
+  AnimationMixer,
+  LoopOnce,
+  LoopRepeat,
+  Mesh,
+  Object3D,
+  Vector3,
+} from 'three'
 import type { AssetKey, AnimationClipName } from '../lib/gltf'
-import { getAssetEntry, fitModelToConstraints } from '../lib/gltf'
+import { cloneScene, getAssetEntry, fitModelToConstraints } from '../lib/gltf'
+import { ErrorBoundary } from './ErrorBoundary'
 
 interface GLTFModelProps {
   /** Registered asset key from the asset registry. */
@@ -16,8 +25,13 @@ interface GLTFModelProps {
   animation?: AnimationClipName
   /** Whether to play the animation (default: true if asset has animations). */
   playAnimation?: boolean
-  /** Callback when the model and animations are ready. */
-  onReady?: (mixer: AnimationMixer | null, clips: AnimationClip[]) => void
+  /**
+   * Callback when the model and animations are ready.
+   *
+   * The scene root is passed as the third argument so callers can verify
+   * that each instance owns an independent object hierarchy.
+   */
+  onReady?: (mixer: AnimationMixer | null, clips: AnimationClip[], scene: Object3D) => void
 }
 
 /**
@@ -35,13 +49,15 @@ export function GLTFModel({
   const entry = getAssetEntry(asset)
   const { url, bounds, fit, defaultAnimation, castShadow = true, receiveShadow = true } = entry
   const gltf = useLoader(GLTFLoader, url)
-  const mixerRef = useRef<AnimationMixer | null>(null)
-  const clockRef = useRef(new Clock())
 
-  // Apply fitted transform after load
+  // One clone per instance. The cached GLTF is shared, the scene graph is not.
+  const scene = useMemo(() => cloneScene(gltf.scene), [gltf])
+  const mixerRef = useRef<AnimationMixer | null>(null)
+
+  // Apply the fitted transform after load
   useEffect(() => {
     const fitted = fitModelToConstraints(bounds, fit)
-    const root = gltf.scene
+    const root = scene
     root.scale.setScalar(fitted.scale)
     root.position.set(fitted.center[0], fitted.center[1], fitted.center[2])
     if (position) root.position.add(new Vector3(...position))
@@ -67,47 +83,49 @@ export function GLTFModel({
       const clipName = animation ?? defaultAnimation ?? clips[0].name
       const clip = clips.find((c) => c.name === clipName) ?? clips[0]
       const action = mixer.clipAction(clip)
-      action.setLoop(LoopOnce, Infinity)
-      action.clampWhenFinished = true
+      // Idle, wave and cheer are meant to loop; the one-shot clips are not.
+      // A one-shot action repeats once and then holds its final frame.
+      const loopsForever = clipName !== 'jump' && clipName !== 'fall' && clipName !== 'death'
+      action.setLoop(loopsForever ? LoopRepeat : LoopOnce, loopsForever ? Infinity : 1)
+      action.clampWhenFinished = !loopsForever
       action.play()
     }
 
-    onReady?.(mixer, clips)
+    onReady?.(mixer, clips, root)
 
     return () => {
-      mixer?.uncacheRoot(root)
       mixer?.stopAllAction()
+      mixer?.uncacheRoot(root)
+      if (mixerRef.current === mixer) mixerRef.current = null
     }
-  }, [gltf, bounds, fit, position, rotation, animation, defaultAnimation, playAnimation, castShadow, receiveShadow, onReady])
+  }, [scene, gltf, bounds, fit, position, rotation, animation, defaultAnimation, playAnimation, castShadow, receiveShadow, onReady])
 
-  // Animation frame update
-  useEffect(() => {
+  // Animation update. The mixer is driven by the render loop of React Three
+  // Fiber instead of a private `requestAnimationFrame` loop, so the animation
+  // stays in step with the frame that is actually drawn and stops as soon as
+  // the component unmounts.
+  useFrame((_, delta) => {
+    // The mixer is created in the effect above, which runs after the first
+    // render, so it is looked up lazily here.
     const mixer = mixerRef.current
     if (!mixer) return
+    mixer.update(delta)
+  })
 
-    const animate = () => {
-      const delta = clockRef.current.getDelta()
-      mixer.update(delta)
-    }
-
-    const frameId = requestAnimationFrame(function loop() {
-      animate()
-      requestAnimationFrame(loop)
-    })
-
-    return () => cancelAnimationFrame(frameId)
-  }, [])
-
-  // Error boundary fallback will catch loading errors
   return (
     <group>
-      <primitive object={gltf.scene} />
+      <primitive object={scene} />
     </group>
   )
 }
 
 /**
  * Suspense wrapper for GLTFModel that provides a procedural fallback.
+ *
+ * The error boundary is part of the component because a model can fail in two
+ * different ways: the download can reject (handled by Suspense), or the
+ * parsed scene can throw while it is mounted (handled by the boundary). In
+ * both cases the fallback is rendered and the rest of the scene survives.
  */
 export function GLTFModelWithFallback({
   asset,
@@ -115,9 +133,11 @@ export function GLTFModelWithFallback({
   ...props
 }: GLTFModelProps & { fallback?: React.ReactNode }) {
   return (
-    <Suspense fallback={fallback ?? null}>
-      <GLTFModel asset={asset} {...props} />
-    </Suspense>
+    <ErrorBoundary fallback={fallback ?? null}>
+      <Suspense fallback={fallback ?? null}>
+        <GLTFModel asset={asset} {...props} />
+      </Suspense>
+    </ErrorBoundary>
   )
 }
 

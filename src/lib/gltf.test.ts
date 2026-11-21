@@ -9,6 +9,7 @@ import {
   type FitConstraints,
   type AnimationClipName,
 } from './gltf'
+import { publicAssetBase } from './assets'
 
 describe('gltf utilities', () => {
   describe('fitModelToConstraints', () => {
@@ -97,10 +98,18 @@ describe('gltf utilities', () => {
       })
     })
 
-    it('should have valid URL for each asset', () => {
+    it('should have a base-aware URL for each asset', () => {
       ASSET_KEYS.forEach((key) => {
         const entry = ASSET_REGISTRY[key]
-        expect(entry.url).toMatch(/^\/models\/.*\.glb$/)
+        expect(entry.fileName).toMatch(/^[^/]+\.glb$/)
+        // The URL is always composed from the configured base, never
+        // hard-coded. On GitHub Pages the base is `/kathonng`, so a
+        // root-absolute `/models/...` URL would 404.
+        expect(entry.url).toBe(`${publicAssetBase}/models/${entry.fileName}`)
+        expect(entry.url.endsWith(`/models/${entry.fileName}`)).toBe(true)
+        if (publicAssetBase) {
+          expect(entry.url.startsWith(`${publicAssetBase}/`)).toBe(true)
+        }
       })
     })
 
@@ -170,7 +179,8 @@ describe('gltf utilities', () => {
   describe('getAssetEntry', () => {
     it('should return correct entry for valid key', () => {
       const entry = getAssetEntry('visitor')
-      expect(entry.url).toBe('/models/visitor.glb')
+      expect(entry.fileName).toBe('visitor.glb')
+      expect(entry.url).toBe(`${publicAssetBase}/models/visitor.glb`)
       expect(entry.animations).toContain('idle')
     })
 

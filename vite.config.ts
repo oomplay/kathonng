@@ -46,8 +46,20 @@ export default defineConfig(({ mode }) => {
                 includeDependenciesRecursively: false,
               },
               {
+                // React Three Fiber and its runtime support packages have to
+                // stay in one chunk. The web Canvas imports `its-fine`
+                // (FiberProvider) and `react-use-measure`; if those fall into
+                // the lazy scene chunk while the Canvas itself lives in this
+                // chunk, the two chunks import each other and the build
+                // contains a cycle.
+                //
+                // `@babel/runtime/helpers/esm/extends` is included for the same
+                // reason: Drei imports it, and Rolldown otherwise places the
+                // shared helper in the lazy scene chunk. That makes the scene
+                // chunk import Drei and Drei import the helper back from the
+                // scene chunk, which is a circular import between chunks.
                 name: 'react-three',
-                test: /node_modules[\\/](@react-three[\\/]|three-stdlib[\\/])/,
+                test: /node_modules[\\/](@react-three[\\/]|three-stdlib[\\/]|its-fine[\\/]|react-use-measure[\\/]|suspend-react[\\/]|zustand[\\/]|use-sync-external-store[\\/]|@babel[\\/]runtime[\\/]helpers[\\/]esm[\\/]extends\.js)/,
                 priority: 20,
                 includeDependenciesRecursively: false,
               },

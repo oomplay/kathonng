@@ -5,6 +5,7 @@ import { getInitialQuality, getQualityOverride, type RenderQuality } from './sce
 import { ApiError, createKrathong, uploadPhoto, voteKrathong } from './lib/api'
 import { getVoterFingerprint } from './lib/fingerprint'
 import { isSupabaseConfigured } from './lib/supabase'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { TopBar } from './ui/TopBar'
 import { KrathongList } from './ui/KrathongList'
 import { KrathongDetail } from './ui/KrathongDetail'
@@ -32,6 +33,29 @@ const CreateKrathongDialog = lazy(() =>
     default: module.CreateKrathongDialog,
   })),
 )
+
+/**
+ * Shown in place of the 3D canvas when the scene cannot be rendered.
+ *
+ * The canvas is decorative: the krathong list, voting and the create dialog
+ * all live in the DOM above it. Keeping the HUD alive means a broken WebGL
+ * context or a missing model degrades the page instead of blanking it.
+ */
+function SceneUnavailable() {
+  return (
+    <div className="absolute inset-0 grid place-items-center bg-river-950 px-6 text-center">
+      <div className="max-w-sm">
+        <div className="mb-3 text-4xl" aria-hidden="true">
+          🌙
+        </div>
+        <h2 className="text-lg font-semibold text-mist-50">ฉาก 3 มิติไม่สามารถแสดงผลได้</h2>
+        <p className="mt-2 text-sm leading-relaxed text-mist-300">
+          คุณยังเลือกกระทง โหวต และลอยกระทงของคุณได้ตามปกติจากรายการด้านข้าง
+        </p>
+      </div>
+    </div>
+  )
+}
 
 function App() {
   const feed = useKrathongFeed()
@@ -235,21 +259,25 @@ function App() {
       // Exposes the active rendering tier for diagnostics and visual checks.
       data-quality={quality}
     >
-      {/* 3D river. The heavy chunk loads after the HUD shell has painted. */}
+      {/* 3D river. The heavy chunk loads after the HUD shell has painted.
+          The error boundary keeps a failed canvas (missing WebGL, a broken
+          model) from unmounting the HUD above it. */}
       <div className="absolute inset-0">
-        <Suspense fallback={<SceneLoader />}>
-          <Scene
-            krathongs={feed.krathongs}
-            selectedId={selectedId}
-            reducedEffects={reducedEffects}
-            quality={quality}
-            onSelect={handleSelect}
-            onCameraMoved={handleCameraMoved}
-            onCameraResetReady={handleCameraResetReady}
-            onCameraFocusReady={handleCameraFocusReady}
-            onLowPerformance={handleLowPerformance}
-          />
-        </Suspense>
+        <ErrorBoundary fallback={<SceneUnavailable />}>
+          <Suspense fallback={<SceneLoader />}>
+            <Scene
+              krathongs={feed.krathongs}
+              selectedId={selectedId}
+              reducedEffects={reducedEffects}
+              quality={quality}
+              onSelect={handleSelect}
+              onCameraMoved={handleCameraMoved}
+              onCameraResetReady={handleCameraResetReady}
+              onCameraFocusReady={handleCameraFocusReady}
+              onLowPerformance={handleLowPerformance}
+            />
+          </Suspense>
+        </ErrorBoundary>
       </div>
 
       <TopBar
