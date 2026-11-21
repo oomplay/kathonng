@@ -1,6 +1,13 @@
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import * as THREE from 'three'
+import {
+  BufferGeometry,
+  Color,
+  CylinderGeometry,
+  InstancedMesh,
+  Object3D,
+  SphereGeometry,
+} from 'three'
 import {
   compilePath,
   HAIR_COLORS,
@@ -94,24 +101,24 @@ function buildVisitors(count: number): Visitor[] {
 interface PartSpec {
   pivot: [number, number, number]
   offset: [number, number, number]
-  geometry: THREE.BufferGeometry
+  geometry: BufferGeometry
 }
 
 function buildParts(): PartSpec[] {
-  const torso = new THREE.CylinderGeometry(0.19, 0.23, 0.52, 10)
+  const torso = new CylinderGeometry(0.19, 0.23, 0.52, 10)
   torso.translate(0, 0, 0)
 
-  const sarong = new THREE.CylinderGeometry(0.24, 0.3, 0.55, 12)
+  const sarong = new CylinderGeometry(0.24, 0.3, 0.55, 12)
 
-  const head = new THREE.SphereGeometry(0.16, 14, 12)
+  const head = new SphereGeometry(0.16, 14, 12)
 
-  const hair = new THREE.SphereGeometry(0.168, 14, 12, 0, Math.PI * 2, 0, Math.PI * 0.62)
+  const hair = new SphereGeometry(0.168, 14, 12, 0, Math.PI * 2, 0, Math.PI * 0.62)
 
-  const arm = new THREE.CylinderGeometry(0.055, 0.05, 0.58, 7)
+  const arm = new CylinderGeometry(0.055, 0.05, 0.58, 7)
 
-  const leg = new THREE.CylinderGeometry(0.07, 0.06, 0.82, 8)
+  const leg = new CylinderGeometry(0.07, 0.06, 0.82, 8)
 
-  const lantern = new THREE.CylinderGeometry(0.075, 0.075, 0.2, 8)
+  const lantern = new CylinderGeometry(0.075, 0.075, 0.2, 8)
 
   return [
     { pivot: [0, 1.34, 0], offset: [0, 0, 0], geometry: torso },
@@ -156,9 +163,17 @@ export function Visitors({ reducedEffects, degraded }: VisitorsProps) {
   const visitors = useMemo(() => buildVisitors(visitorCount), [visitorCount])
   const parts = useMemo(() => buildParts(), [])
 
-  const meshes = useRef<(THREE.InstancedMesh | null)[]>([])
-  const dummy = useMemo(() => new THREE.Object3D(), [])
-  const color = useMemo(() => new THREE.Color(), [])
+  const meshes = useRef<(InstancedMesh | null)[]>([])
+  const dummy = useMemo(() => new Object3D(), [])
+  const color = useMemo(() => new Color(), [])
+
+  // These geometries are passed as instancedMesh args, so React Three Fiber
+  // does not dispose them automatically. Release every part on unmount.
+  useEffect(() => {
+    return () => {
+      for (const part of parts) part.geometry.dispose()
+    }
+  }, [parts])
 
   useFrame((state) => {
     const time = state.clock.elapsedTime

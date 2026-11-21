@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import * as THREE from 'three'
+import { useEffect, useMemo } from 'react'
+import { AdditiveBlending, CanvasTexture, SRGBColorSpace } from 'three'
 import {
   CHEDI_TERRACE,
   FAR_BANK_EDGE_Z,
@@ -339,10 +339,18 @@ function createGlowCanvas(): HTMLCanvasElement {
 /** Paper lanterns strung above the promenades. */
 function Lanterns({ reducedEffects }: LandmarksProps) {
   const glow = useMemo(() => {
-    const texture = new THREE.CanvasTexture(createGlowCanvas())
-    texture.colorSpace = THREE.SRGBColorSpace
+    const texture = new CanvasTexture(createGlowCanvas())
+    texture.colorSpace = SRGBColorSpace
     return texture
   }, [])
+
+  // CanvasTexture is not owned by a declarative material, so release the GPU
+  // copy explicitly when the landmark group unmounts.
+  useEffect(() => {
+    return () => {
+      glow.dispose()
+    }
+  }, [glow])
 
   const strands = useMemo(() => {
     const result: {
@@ -393,7 +401,7 @@ function Lanterns({ reducedEffects }: LandmarksProps) {
                 transparent
                 opacity={0.4}
                 depthWrite={false}
-                blending={THREE.AdditiveBlending}
+                blending={AdditiveBlending}
                 toneMapped={false}
               />
             </sprite>

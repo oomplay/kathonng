@@ -34,6 +34,9 @@ jobs:
 
       - name: Build
         env:
+          # GitHub Pages publishes this project under /kathonng/, so the asset
+          # base has to point at that sub path.
+          VITE_BASE_PATH: /kathonng/
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: npm run build

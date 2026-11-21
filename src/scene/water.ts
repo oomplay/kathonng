@@ -1,10 +1,10 @@
-import * as THREE from 'three'
+import { DataTexture, RGBAFormat, RepeatWrapping } from 'three'
 
 /**
  * Builds a seamless tangent-space normal map from layered sine waves so the
  * reflective water shows moving ripples without shipping any texture asset.
  */
-export function createWaterNormalTexture(size = 256): THREE.DataTexture {
+export function createWaterNormalTexture(size = 256): DataTexture {
   const data = new Uint8Array(size * size * 4)
 
   const height = (x: number, y: number) =>
@@ -32,9 +32,9 @@ export function createWaterNormalTexture(size = 256): THREE.DataTexture {
     }
   }
 
-  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat)
-  texture.wrapS = THREE.RepeatWrapping
-  texture.wrapT = THREE.RepeatWrapping
+  const texture = new DataTexture(data, size, size, RGBAFormat)
+  texture.wrapS = RepeatWrapping
+  texture.wrapT = RepeatWrapping
   texture.repeat.set(10, 10)
   texture.needsUpdate = true
   return texture

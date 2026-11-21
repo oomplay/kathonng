@@ -1,5 +1,11 @@
 import type { IncrementVoteResult, KrathongRow } from '../types/db'
 import { supabase } from './supabase'
+import {
+  ALLOWED_PHOTO_TYPES,
+  MAX_OWNER_NAME_LENGTH,
+  MAX_PHOTO_BYTES,
+  MAX_WISH_TEXT_LENGTH,
+} from './limits'
 
 /** Error raised for every failed network / database interaction. */
 export class ApiError extends Error {
@@ -145,14 +151,51 @@ export interface CreateKrathongInput {
   photoUrl?: string | null
 }
 
+/**
+ * Validates the text fields before they reach the database.
+ *
+ * The database has CHECK constraints for the same limits, but validating here
+ * turns an oversized payload into a clean, user-facing Thai message instead
+ * of a raw Postgres constraint error.
+ */
+function validateCreateInput(input: CreateKrathongInput): {
+  ownerName: string
+  wishText: string
+} {
+  const ownerName = input.ownerName.trim()
+  const wishText = input.wishText.trim()
+
+  if (!ownerName) {
+    throw new ApiError('กรุณาใส่ชื่อของคุณ', 'invalid_owner_name')
+  }
+  if (ownerName.length > MAX_OWNER_NAME_LENGTH) {
+    throw new ApiError(
+      `ชื่อยาวเกินไป (ไม่เกิน ${MAX_OWNER_NAME_LENGTH} ตัวอักษร)`,
+      'owner_name_too_long',
+    )
+  }
+  if (!wishText) {
+    throw new ApiError('กรุณาเขียนคำอธิษฐาน', 'invalid_wish_text')
+  }
+  if (wishText.length > MAX_WISH_TEXT_LENGTH) {
+    throw new ApiError(
+      `คำอธิษฐานยาวเกินไป (ไม่เกิน ${MAX_WISH_TEXT_LENGTH} ตัวอักษร)`,
+      'wish_text_too_long',
+    )
+  }
+
+  return { ownerName, wishText }
+}
+
 /** Inserts a new krathong. `vote_count` is left to the column default (0). */
 export async function createKrathong(input: CreateKrathongInput): Promise<KrathongRow> {
   const client = requireClient()
+  const { ownerName, wishText } = validateCreateInput(input)
   const { data, error } = await client
     .from('krathongs')
     .insert({
-      owner_name: input.ownerName,
-      wish_text: input.wishText,
+      owner_name: ownerName,
+      wish_text: wishText,
       style_id: input.styleId,
       color_hex: input.colorHex,
       photo_url: input.photoUrl ?? null,
@@ -186,16 +229,14 @@ export async function voteKrathong(
 }
 
 const PHOTO_BUCKET = 'krathong-photos'
-const MAX_PHOTO_BYTES = 5 * 1024 * 1024
-const ALLOWED_PHOTO_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/avif']
 
 /** Uploads a photo to the public bucket and returns its public URL. */
 export async function uploadPhoto(file: File): Promise<string> {
-  if (!ALLOWED_PHOTO_TYPES.includes(file.type)) {
+  if (!ALLOWED_PHOTO_TYPES.includes(file.type as (typeof ALLOWED_PHOTO_TYPES)[number])) {
     throw new ApiError('รองรับเฉพาะไฟล์ PNG, JPEG, WEBP และ AVIF', 'invalid_type')
   }
   if (file.size > MAX_PHOTO_BYTES) {
-    throw new ApiError('รูปภาพต้องมีขนาดไม่เกิน 5 MB', 'too_large')
+    throw new ApiError('รูปภาพต้องมีขนาดไม่เกิน 2 MB', 'too_large')
   }
 
   const client = requireClient()

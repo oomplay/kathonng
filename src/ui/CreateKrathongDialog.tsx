@@ -4,6 +4,13 @@ import { CameraCapture } from './CameraCapture'
 import { compressImageFile } from '../lib/camera'
 import { COLOR_PRESETS, KRATHONG_STYLES, STYLE_ORDER } from '../lib/styles'
 import { normalizeHex } from '../lib/color'
+import {
+  ALLOWED_PHOTO_TYPES,
+  MAX_OWNER_NAME_LENGTH,
+  MAX_PHOTO_BYTES,
+  MAX_SOURCE_PHOTO_BYTES,
+  MAX_WISH_TEXT_LENGTH,
+} from '../lib/limits'
 import type { StyleId } from '../types/db'
 import { CameraIcon, ImageIcon } from './icons'
 
@@ -21,9 +28,6 @@ interface CreateKrathongDialogProps {
   onClose: () => void
   onSubmit: (values: CreateKrathongValues) => void
 }
-
-const MAX_PHOTO_BYTES = 5 * 1024 * 1024
-const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/avif']
 
 /** How the photo is currently being provided. */
 type PhotoMode = 'camera' | 'file'
@@ -46,8 +50,26 @@ export function CreateKrathongDialog({
   const [processingPhoto, setProcessingPhoto] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // The dialog is remounted by the parent (via `key`) each time it opens, so
-  // the form always starts from a clean state without a reset effect.
+  // The dialog stays mounted after the first open so the native <dialog> can
+  // close cleanly and return focus. Reset the form each time it is reopened.
+  const wasOpenRef = useRef(open)
+  useEffect(() => {
+    if (open && !wasOpenRef.current) {
+      setOwnerName('')
+      setWishText('')
+      setStyleId('classic')
+      setColorHex(COLOR_PRESETS[0])
+      setPhoto(null)
+      setPhotoPreview((current) => {
+        if (current) URL.revokeObjectURL(current)
+        return null
+      })
+      setPhotoMode('camera')
+      setError(null)
+    }
+    wasOpenRef.current = open
+  }, [open])
+
   useEffect(() => {
     return () => {
       if (photoPreview) URL.revokeObjectURL(photoPreview)
@@ -60,12 +82,12 @@ export function CreateKrathongDialog({
       clearPhoto()
       return
     }
-    if (!ALLOWED_TYPES.includes(file.type)) {
+    if (!ALLOWED_PHOTO_TYPES.includes(file.type as (typeof ALLOWED_PHOTO_TYPES)[number])) {
       setError('รองรับเฉพาะไฟล์ PNG, JPEG, WEBP และ AVIF')
       return
     }
-    if (file.size > MAX_PHOTO_BYTES) {
-      setError('รูปภาพต้องมีขนาดไม่เกิน 5 MB')
+    if (file.size > MAX_SOURCE_PHOTO_BYTES) {
+      setError('ไฟล์ต้นฉบับต้องมีขนาดไม่เกิน 12 MB')
       return
     }
 
@@ -76,6 +98,12 @@ export function CreateKrathongDialog({
       // produces this format, but running it again is cheap and keeps the
       // file-upload fallback from uploading a multi-megabyte original.
       const compressed = await compressImageFile(file)
+      // The compressed file is what reaches Storage, so the 2 MB production
+      // limit is enforced here rather than on the original camera file.
+      if (compressed.size > MAX_PHOTO_BYTES) {
+        setError('รูปภาพหลังย่อยังใหญ่เกิน 2 MB — กรุณาเลือกรูปใหม่')
+        return
+      }
       setPhoto(compressed)
       setPhotoPreview((current) => {
         if (current) URL.revokeObjectURL(current)
@@ -113,12 +141,12 @@ export function CreateKrathongDialog({
       setError('กรุณาเขียนคำอธิษฐาน')
       return
     }
-    if (trimmedName.length > 60) {
-      setError('ชื่อยาวเกินไป (ไม่เกิน 60 ตัวอักษร)')
+    if (trimmedName.length > MAX_OWNER_NAME_LENGTH) {
+      setError(`ชื่อยาวเกินไป (ไม่เกิน ${MAX_OWNER_NAME_LENGTH} ตัวอักษร)`)
       return
     }
-    if (trimmedWish.length > 280) {
-      setError('คำอธิษฐานยาวเกินไป (ไม่เกิน 280 ตัวอักษร)')
+    if (trimmedWish.length > MAX_WISH_TEXT_LENGTH) {
+      setError(`คำอธิษฐานยาวเกินไป (ไม่เกิน ${MAX_WISH_TEXT_LENGTH} ตัวอักษร)`)
       return
     }
 
@@ -173,7 +201,7 @@ export function CreateKrathongDialog({
             type="text"
             value={ownerName}
             onChange={(event) => setOwnerName(event.target.value)}
-            maxLength={60}
+            maxLength={MAX_OWNER_NAME_LENGTH}
             placeholder="เช่น สมชาย"
             className="field"
           />
@@ -187,12 +215,14 @@ export function CreateKrathongDialog({
             id="wish-text"
             value={wishText}
             onChange={(event) => setWishText(event.target.value)}
-            maxLength={280}
+            maxLength={MAX_WISH_TEXT_LENGTH}
             rows={3}
             placeholder="ขอให้ปีใหม่นี้สุขสันต์…"
             className="field resize-none"
           />
-          <p className="mt-1 text-right text-[11px] text-mist-500">{wishText.length}/280</p>
+          <p className="mt-1 text-right text-[11px] text-mist-500">
+            {wishText.length}/{MAX_WISH_TEXT_LENGTH}
+          </p>
         </div>
 
         <fieldset>
@@ -314,7 +344,7 @@ export function CreateKrathongDialog({
                 className="control control-secondary w-full py-6"
               >
                 <ImageIcon className="size-5" />
-                เลือกรูปภาพจากเครื่อง (ไม่เกิน 5 MB)
+                เลือกรูปภาพจากเครื่อง (ไม่เกิน 12 MB)
               </button>
               <button
                 type="button"

@@ -1,7 +1,11 @@
+// Must be evaluated before React Three Fiber is imported: it installs a narrow
+// Three.js warning filter. This import lives at the top of the lazy scene
+// chunk so that `three` never enters the initial bundle.
+import '../lib/threeConsole'
 import { Suspense, useCallback, useMemo, useRef } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Stars } from '@react-three/drei'
-import * as THREE from 'three'
+import { PCFShadowMap } from 'three'
 import type { KrathongRow } from '../types/db'
 import { layoutKrathongs } from '../lib/layout'
 import { CameraRig } from './CameraRig'
@@ -122,7 +126,7 @@ export function Scene({
     <Canvas
       // `PCFSoftShadowMap` was removed in Three r187 and falls back with a
       // warning, so the shadow type is pinned explicitly.
-      shadows={degraded ? false : { type: THREE.PCFShadowMap }}
+      shadows={degraded ? false : { type: PCFShadowMap }}
       dpr={degraded ? 1 : reducedEffects ? [1, 1] : [1, 1.75]}
       camera={{ position: [0, 8.39, 26.25], fov: 47.1, near: 0.1, far: 120 }}
       gl={{ antialias: !reducedEffects && !degraded, powerPreference: 'high-performance' }}

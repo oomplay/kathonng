@@ -1,6 +1,6 @@
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import * as THREE from 'three'
+import { AdditiveBlending, type Group, type Mesh, type PointLight } from 'three'
 import type { KrathongRow } from '../types/db'
 import type { Placement } from '../lib/layout'
 import { getStyle } from '../lib/styles'
@@ -26,9 +26,9 @@ export function Krathong({
   degraded,
   onSelect,
 }: KrathongProps) {
-  const groupRef = useRef<THREE.Group>(null)
-  const flameRef = useRef<THREE.PointLight>(null)
-  const haloRef = useRef<THREE.Mesh>(null)
+  const groupRef = useRef<Group>(null)
+  const flameRef = useRef<PointLight>(null)
+  const haloRef = useRef<Mesh>(null)
 
   const style = getStyle(krathong.style_id)
 
@@ -220,7 +220,7 @@ export function Krathong({
             transparent
             opacity={selected ? 0.22 : 0.1}
             depthWrite={false}
-            blending={THREE.AdditiveBlending}
+            blending={AdditiveBlending}
           />
         </mesh>
       )}

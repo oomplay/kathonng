@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import * as THREE from 'three'
+import { PerspectiveCamera, Vector3 } from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { getFraming } from '../lib/framing'
 
@@ -65,14 +65,14 @@ export function CameraRig({
 
   // The rig only ever runs with a perspective camera, but R3F types the scene
   // camera as a union, so narrow it before reading the field of view.
-  const perspectiveCamera = camera as THREE.PerspectiveCamera
+  const perspectiveCamera = camera as PerspectiveCamera
   // A ref is the sanctioned way to mutate a value that came out of a hook:
   // the field of view has to follow the shape of the viewport.
   const cameraRef = useRef(perspectiveCamera)
 
   // Flight animation state.
-  const flightFrom = useRef<{ position: THREE.Vector3; target: THREE.Vector3 } | null>(null)
-  const flightTo = useRef<{ position: THREE.Vector3; target: THREE.Vector3 } | null>(null)
+  const flightFrom = useRef<{ position: Vector3; target: Vector3 } | null>(null)
+  const flightTo = useRef<{ position: Vector3; target: Vector3 } | null>(null)
   const flightStart = useRef(0)
   const flightActive = useRef(false)
   const moved = useRef(false)
@@ -111,8 +111,8 @@ export function CameraRig({
   const homeFraming = useCallback(() => {
     const framing = getFraming(aspect)
     return {
-      position: new THREE.Vector3(...framing.position),
-      target: new THREE.Vector3(...framing.target),
+      position: new Vector3(...framing.position),
+      target: new Vector3(...framing.target),
       fov: framing.fov,
     }
   }, [aspect])
@@ -132,7 +132,7 @@ export function CameraRig({
 
   /** Starts a flight to the given camera position and target. */
   const flyTo = useCallback(
-    (position: THREE.Vector3, target: THREE.Vector3) => {
+    (position: Vector3, target: Vector3) => {
       const instance = controls.current
       if (!instance) return
 
@@ -180,10 +180,10 @@ export function CameraRig({
       }
 
       pendingFocusId.current = null
-      const target = new THREE.Vector3(position[0], 0.5, position[2])
+      const target = new Vector3(position[0], 0.5, position[2])
       const targetWidth = aspect < 0.9 ? NARROW_FOCUS_WIDTH : WIDE_FOCUS_WIDTH
       const distance = distanceForWidth(targetWidth)
-      const cameraPosition = target.clone().add(new THREE.Vector3(0, distance * 0.62, distance))
+      const cameraPosition = target.clone().add(new Vector3(0, distance * 0.62, distance))
 
       flyTo(cameraPosition, target)
     },

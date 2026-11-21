@@ -39,6 +39,8 @@ export function Modal({
     if (open && !dialog.open) {
       dialog.showModal()
     } else if (!open && dialog.open) {
+      // `close()` runs the native "close the dialog" steps, which move focus
+      // back to the element that had it before `showModal()` was called.
       dialog.close()
     }
   }, [open])

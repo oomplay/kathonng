@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import * as THREE from 'three'
+import { useEffect, useMemo } from 'react'
+import { AdditiveBlending, CanvasTexture, SRGBColorSpace } from 'three'
 
 interface MoonProps {
   reducedEffects: boolean
@@ -49,10 +49,18 @@ function createGlowCanvas(): HTMLCanvasElement {
  */
 export function Moon({ reducedEffects }: MoonProps) {
   const glow = useMemo(() => {
-    const texture = new THREE.CanvasTexture(createGlowCanvas())
-    texture.colorSpace = THREE.SRGBColorSpace
+    const texture = new CanvasTexture(createGlowCanvas())
+    texture.colorSpace = SRGBColorSpace
     return texture
   }, [])
+
+  // The moon halo and reflection share this generated texture. Dispose it
+  // when the scene is torn down so its GPU allocation is not retained.
+  useEffect(() => {
+    return () => {
+      glow.dispose()
+    }
+  }, [glow])
 
   return (
     <group>
@@ -68,7 +76,7 @@ export function Moon({ reducedEffects }: MoonProps) {
             transparent
             opacity={0.55}
             depthWrite={false}
-            blending={THREE.AdditiveBlending}
+            blending={AdditiveBlending}
             toneMapped={false}
             fog={false}
           />
@@ -90,7 +98,7 @@ export function Moon({ reducedEffects }: MoonProps) {
           transparent
           opacity={reducedEffects ? 0.16 : 0.3}
           depthWrite={false}
-          blending={THREE.AdditiveBlending}
+          blending={AdditiveBlending}
           toneMapped={false}
         />
       </mesh>

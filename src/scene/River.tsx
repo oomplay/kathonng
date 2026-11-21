@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { MeshReflectorMaterial } from '@react-three/drei'
-import * as THREE from 'three'
+import { Vector2 } from 'three'
 import { createWaterNormalTexture } from './water'
 
 interface RiverProps {
@@ -21,7 +21,16 @@ export function River({ reducedEffects, degraded }: RiverProps) {
     () => (reducedEffects || degraded ? null : createWaterNormalTexture(256)),
     [reducedEffects, degraded],
   )
-  const normalScale = useMemo(() => new THREE.Vector2(0.6, 0.6), [])
+  const normalScale = useMemo(() => new Vector2(0.6, 0.6), [])
+
+  // The normal map is generated in code, so Three.js does not own it. Release
+  // its GPU texture whenever it is replaced or the scene unmounts; otherwise
+  // switching quality tiers leaks one texture per change on mobile.
+  useEffect(() => {
+    return () => {
+      normalMap?.dispose()
+    }
+  }, [normalMap])
 
   return (
     <group>

@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Scene } from './scene/Scene'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useKrathongFeed } from './hooks/useKrathongFeed'
 import { useReducedEffects } from './hooks/useReducedEffects'
 import { getInitialQuality, getQualityOverride, type RenderQuality } from './scene/quality'
@@ -9,11 +8,30 @@ import { isSupabaseConfigured } from './lib/supabase'
 import { TopBar } from './ui/TopBar'
 import { KrathongList } from './ui/KrathongList'
 import { KrathongDetail } from './ui/KrathongDetail'
-import { CreateKrathongDialog } from './ui/CreateKrathongDialog'
 import type { CreateKrathongValues } from './ui/CreateKrathongDialog'
 import { SceneHints } from './ui/SceneHints'
+import { DialogLoader, SceneLoader } from './ui/SceneLoader'
 import { ToastStack } from './ui/ToastStack'
 import type { Toast, ToastTone } from './types/ui'
+
+/**
+ * The 3D scene is the heaviest dependency in the app, so it is loaded as a
+ * separate chunk after the shell has painted. The HUD stays interactive while
+ * the chunk is on the wire.
+ */
+const Scene = lazy(() =>
+  import('./scene/Scene').then((module) => ({ default: module.Scene })),
+)
+
+/**
+ * The create dialog pulls in the camera capture code, which is only needed
+ * once the user actually wants to float a krathong.
+ */
+const CreateKrathongDialog = lazy(() =>
+  import('./ui/CreateKrathongDialog').then((module) => ({
+    default: module.CreateKrathongDialog,
+  })),
+)
 
 function App() {
   const feed = useKrathongFeed()
@@ -23,10 +41,15 @@ function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [votingId, setVotingId] = useState<string | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
+  // The create dialog chunk is only fetched once the user asks for it, but it
+  // stays mounted afterwards so the native dialog can close (and hand focus
+  // back) instead of being torn out of the DOM.
+  const [createDialogLoaded, setCreateDialogLoaded] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [listOpen, setListOpen] = useState(false)
   const [toasts, setToasts] = useState<Toast[]>([])
   const toastIdRef = useRef(0)
+  const detailTriggerRef = useRef<HTMLElement | null>(null)
 
   // Camera framing: the scene publishes a reset function and reports whether
   // the view has drifted away from the home framing.
@@ -83,8 +106,27 @@ function App() {
   )
 
   const handleSelect = useCallback((id: string) => {
+    if (id) {
+      detailTriggerRef.current =
+        document.activeElement instanceof HTMLElement ? document.activeElement : null
+    }
     setSelectedId(id || null)
     if (id) setListOpen(false)
+  }, [])
+
+  const handleCloseDetail = useCallback(() => {
+    setSelectedId(null)
+    // Return focus to the row or 3D control that opened the detail card.
+    // If the trigger disappeared (for example a live feed refresh), fall back
+    // to the list toggle so keyboard users are never stranded.
+    window.requestAnimationFrame(() => {
+      const trigger = detailTriggerRef.current
+      if (trigger?.isConnected) {
+        trigger.focus()
+      } else {
+        document.querySelector<HTMLButtonElement>('[aria-label="แสดงรายการกระทง"]')?.focus()
+      }
+    })
   }, [])
 
 
@@ -117,6 +159,11 @@ function App() {
     },
     [feed, pushToast, votingId],
   )
+
+  const handleOpenCreate = useCallback(() => {
+    setCreateDialogLoaded(true)
+    setCreateOpen(true)
+  }, [])
 
   const handleCreate = useCallback(
     async (values: CreateKrathongValues) => {
@@ -154,15 +201,15 @@ function App() {
     [feed, pushToast],
   )
 
-  // Escape closes the detail card.
+  // Escape closes the detail card and returns focus to its trigger.
   useEffect(() => {
     if (!selectedId) return
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setSelectedId(null)
+      if (event.key === 'Escape') handleCloseDetail()
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [selectedId])
+  }, [handleCloseDetail, selectedId])
 
   if (!isSupabaseConfigured) {
     return (
@@ -188,19 +235,21 @@ function App() {
       // Exposes the active rendering tier for diagnostics and visual checks.
       data-quality={quality}
     >
-      {/* 3D river */}
+      {/* 3D river. The heavy chunk loads after the HUD shell has painted. */}
       <div className="absolute inset-0">
-        <Scene
-          krathongs={feed.krathongs}
-          selectedId={selectedId}
-          reducedEffects={reducedEffects}
-          quality={quality}
-          onSelect={handleSelect}
-          onCameraMoved={handleCameraMoved}
-          onCameraResetReady={handleCameraResetReady}
-          onCameraFocusReady={handleCameraFocusReady}
-          onLowPerformance={handleLowPerformance}
-        />
+        <Suspense fallback={<SceneLoader />}>
+          <Scene
+            krathongs={feed.krathongs}
+            selectedId={selectedId}
+            reducedEffects={reducedEffects}
+            quality={quality}
+            onSelect={handleSelect}
+            onCameraMoved={handleCameraMoved}
+            onCameraResetReady={handleCameraResetReady}
+            onCameraFocusReady={handleCameraFocusReady}
+            onLowPerformance={handleLowPerformance}
+          />
+        </Suspense>
       </div>
 
       <TopBar
@@ -210,7 +259,7 @@ function App() {
         isLive={feed.isLive}
         reducedEffects={reducedEffects}
         onToggleEffects={() => setReducedEffects(!reducedEffects)}
-        onOpenCreate={() => setCreateOpen(true)}
+        onOpenCreate={handleOpenCreate}
         onToggleList={() => setListOpen((open) => !open)}
         listOpen={listOpen}
       />
@@ -231,16 +280,19 @@ function App() {
         voted={selectedId ? feed.votedIds.has(selectedId) : false}
         voting={votingId === selectedId}
         onVote={handleVote}
-        onClose={() => setSelectedId(null)}
+        onClose={handleCloseDetail}
       />
 
-      <CreateKrathongDialog
-        key={createOpen ? 'create-open' : 'create-closed'}
-        open={createOpen}
-        submitting={submitting}
-        onClose={() => setCreateOpen(false)}
-        onSubmit={handleCreate}
-      />
+      {createDialogLoaded && (
+        <Suspense fallback={<DialogLoader />}>
+          <CreateKrathongDialog
+            open={createOpen}
+            submitting={submitting}
+            onClose={() => setCreateOpen(false)}
+            onSubmit={handleCreate}
+          />
+        </Suspense>
+      )}
 
       <ToastStack toasts={toasts} onDismiss={dismissToast} />
 
