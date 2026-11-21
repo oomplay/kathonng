@@ -13,6 +13,7 @@ import {
   RIVER_HALF_WIDTH,
   TEMPLE_PLATFORM,
 } from './world'
+import { GLTFModelWithFallback } from '../components/GLTFModel'
 
 interface LandmarksProps {
   reducedEffects: boolean
@@ -417,9 +418,40 @@ export function Landmarks({ reducedEffects }: LandmarksProps) {
   return (
     <group>
       <Ground />
-      <Temple />
-      <Chedi />
-      <StiltHouse />
+      {/* Wat Temple (GLTF) - replaces procedural Temple at the temple platform */}
+      <GLTFModelWithFallback
+        asset="wat-temple"
+        position={[0, 0, 0]}
+        rotation={[0, 0, 0]}
+        fallback={<Temple />}
+      />
+      {/* Pagoda (GLTF) - replaces procedural Chedi at the chedi terrace */}
+      <GLTFModelWithFallback
+        asset="pagoda"
+        position={[0, 0, 0]}
+        rotation={[0, 0, 0]}
+        fallback={<Chedi />}
+      />
+      {/* Thai House (GLTF) - replaces procedural StiltHouse at the house deck */}
+      <GLTFModelWithFallback
+        asset="thai-house"
+        position={[0, 0, 0]}
+        rotation={[0, Math.PI / 2, 0]}
+        fallback={<StiltHouse />}
+      />
+      {/* Riverside Trees - decorative along the banks */}
+      <GLTFModelWithFallback asset="riverside-tree" position={[-14, 0, -8]} rotation={[0, 0, 0]} />
+      <GLTFModelWithFallback asset="riverside-tree" position={[14, 0, -8]} rotation={[0, Math.PI / 3, 0]} />
+      <GLTFModelWithFallback asset="riverside-tree" position={[-10, 0, -20]} rotation={[0, -Math.PI / 4, 0]} />
+      {/* Lotus flowers in the water near the pier */}
+      <GLTFModelWithFallback asset="lotus" position={[4, 0.1, -8.5]} rotation={[0, 0, 0]} />
+      <GLTFModelWithFallback asset="lotus" position={[5.5, 0.1, -7.8]} rotation={[0, Math.PI / 2, 0]} />
+      <GLTFModelWithFallback asset="lotus" position={[3.2, 0.1, -7.2]} rotation={[0, -Math.PI / 3, 0]} />
+      {/* Festival lanterns along the promenades */}
+      <GLTFModelWithFallback asset="festival-lantern" position={[-8, 0, 2]} rotation={[0, 0, 0]} />
+      <GLTFModelWithFallback asset="festival-lantern" position={[-8, 0, -2]} rotation={[0, 0, 0]} />
+      <GLTFModelWithFallback asset="festival-lantern" position={[8, 0, 2]} rotation={[0, 0, 0]} />
+      <GLTFModelWithFallback asset="festival-lantern" position={[8, 0, -2]} rotation={[0, 0, 0]} />
       <Pier />
       <Lanterns reducedEffects={reducedEffects} />
     </group>

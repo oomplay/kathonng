@@ -18,6 +18,7 @@ import {
   TROUSER_COLORS,
   VISITOR_PATHS,
 } from './world'
+import { GLTFModelWithFallback } from '../components/GLTFModel'
 
 interface VisitorsProps {
   reducedEffects: boolean
@@ -257,6 +258,7 @@ export function Visitors({ reducedEffects, degraded }: VisitorsProps) {
 
   return (
     <group>
+      {/* Procedural crowd (instanced meshes) */}
       {parts.map((part, index) => (
         <instancedMesh
           key={`part-${index}`}
@@ -274,6 +276,44 @@ export function Visitors({ reducedEffects, degraded }: VisitorsProps) {
           )}
         </instancedMesh>
       ))}
+
+      {/* Focal GLTF visitors - placed at key locations along paths */}
+      {!degraded && (
+        <>
+          {/* Visitor near the pier watching krathongs */}
+          <GLTFModelWithFallback
+            asset="visitor"
+            position={[4.5, 0, -8.2]}
+            rotation={[0, -Math.PI / 2, 0]}
+            animation="idle"
+            playAnimation={true}
+          />
+          {/* Visitor on the left promenade */}
+          <GLTFModelWithFallback
+            asset="visitor"
+            position={[-8.5, 0, 3]}
+            rotation={[0, Math.PI / 4, 0]}
+            animation="wave"
+            playAnimation={true}
+          />
+          {/* Visitor on the right promenade */}
+          <GLTFModelWithFallback
+            asset="visitor"
+            position={[8.5, 0, -3]}
+            rotation={[0, -Math.PI / 4, 0]}
+            animation="cheer"
+            playAnimation={true}
+          />
+          {/* Visitor near the temple */}
+          <GLTFModelWithFallback
+            asset="visitor"
+            position={[-9, 0, -18]}
+            rotation={[0, 0, 0]}
+            animation="idle"
+            playAnimation={true}
+          />
+        </>
+      )}
     </group>
   )
 }
